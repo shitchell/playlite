@@ -10,9 +10,17 @@ import { navigate } from './commands/navigate.js';
 import { evalCommand } from './commands/eval.js';
 import { run } from './commands/run.js';
 import { launch } from './commands/launch.js';
+import { loadConfig } from './config.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as { version: string };
+
+// Load project config (port, profile, etc.) before defining commands.
+// loadConfig() is async (uses tsx to import config.ts), so we wrap
+// the CLI setup in an async IIFE to allow top-level await.
+(async () => {
+const config = await loadConfig();
+const defaultPort = String(config.port);
 
 const program = new Command();
 
@@ -27,7 +35,7 @@ program
 program
   .command('tabs')
   .description('List open tabs in the connected browser')
-  .option('--port <n>', 'CDP port', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .option('--json', 'JSON output', false)
   .action(async (options) => {
     await tabs(options);
@@ -39,7 +47,7 @@ program
 program
   .command('connect [port]')
   .description('Test connectivity to a running browser')
-  .option('--port <n>', 'CDP port', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .action(async (portArg, options) => {
     // The optional positional arg is a convenience alias for --port.
     // Positional wins if given; falls back to --port (or its default).
@@ -54,7 +62,7 @@ program
 program
   .command('url')
   .description("Print the current page's URL")
-  .option('--port <n>', 'CDP port', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (options) => {
     await url(options);
@@ -66,7 +74,7 @@ program
 program
   .command('screenshot [path]')
   .description('Capture the current page as a PNG')
-  .option('--port <n>', 'CDP port', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--full', 'Full page screenshot (not just viewport)', false)
   .action(async (path, options) => {
@@ -79,7 +87,7 @@ program
 program
   .command('navigate <url>')
   .description('Navigate the current page to a URL')
-  .option('--port <n>', 'CDP port', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (targetUrl, options) => {
     await navigate(targetUrl, options);
@@ -94,7 +102,7 @@ program
     'Evaluate JavaScript. Without --lib: runs in browser context (page.evaluate). ' +
     'With --lib: runs in Node context with lib helpers in scope.'
   )
-  .option('--port <n>', 'CDP port', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .option('--json', 'Force JSON output', false)
@@ -108,7 +116,7 @@ program
 program
   .command('run <script>')
   .description('Run a TypeScript file with browser and lib helpers injected into scope')
-  .option('--port <n>', 'CDP port', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .action(async (script, options) => {
@@ -121,7 +129,7 @@ program
 program
   .command('launch')
   .description('Launch a new Chromium browser with remote debugging enabled')
-  .option('--port <n>', 'CDP port (default: 9222)', '9222')
+  .option('--port <n>', 'CDP port', defaultPort)
   .option('--profile <path>', 'Browser profile directory')
   .option('--headless', 'Launch headless (default: headed)', false)
   .option('--url <url>', 'Navigate to URL after launch')
@@ -146,3 +154,4 @@ process.on('unhandledRejection', (reason: unknown) => {
 });
 
 program.parse();
+})();

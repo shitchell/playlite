@@ -310,12 +310,22 @@ export function executeWrapper(options: RunnerOptions): void {
     }
 
     // Execute the wrapper with tsx, inheriting stdio for pass-through.
-    // cwd is set to the playlite package root so that `playwright-core` and
-    // other dependencies resolve from playlite's own node_modules.
+    // cwd is set to the project root (parent of .playlite/) so that tools
+    // like dotenv.config() find the user's .env file. tsx resolves imports
+    // from the temp file's location (inside playlite's .tmp/), so
+    // playwright-core still resolves from playlite's own node_modules.
+    let projectRoot: string;
+    try {
+      const playliteDir = findPlayliteDir();
+      projectRoot = dirname(playliteDir);
+    } catch {
+      projectRoot = process.cwd(); // fallback if no .playlite/
+    }
+
     try {
       execFileSync(tsxBin, [...tsconfigArgs, tempFile], {
         stdio: 'inherit',
-        cwd: getPackageRoot(),
+        cwd: projectRoot,
         env: { ...process.env },
       });
     } catch (err: unknown) {
