@@ -32,8 +32,9 @@ export async function connectToBrowser(port: number): Promise<ConnectedBrowser> 
     return { browser, context };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    // Playwright surfaces connection errors with "ECONNREFUSED" or similar
-    if (message.includes('ECONNREFUSED') || message.includes('connect')) {
+    // Playwright surfaces connection errors with "ECONNREFUSED", "ERR_CONNECTION_REFUSED",
+    // or "connect ECONNREFUSED". Only rewrite errors that are clearly connection failures.
+    if (message.includes('ECONNREFUSED') || message.includes('ERR_CONNECTION_REFUSED')) {
       throw new Error(
         `No browser found on port ${port}. Launch one with: playlite launch`
       );
