@@ -8,6 +8,11 @@ export interface EvalOptions {
 }
 
 export async function evalCommand(code: string, options: EvalOptions): Promise<void> {
+  if (options.lib?.length) {
+    console.error('--lib is not yet supported for eval. Coming in a future release.');
+    process.exit(1);
+  }
+
   const port = parseInt(options.port, 10);
   if (isNaN(port)) {
     console.error(`Invalid port: "${options.port}"`);

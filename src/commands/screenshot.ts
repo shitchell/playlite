@@ -22,7 +22,7 @@ export async function screenshot(path: string | undefined, options: ScreenshotOp
 
     await page.screenshot({ path: outputPath, fullPage: options.full });
 
-    console.error(`Screenshot saved.`);
+    console.error(`Screenshot saved to ${outputPath}`);
     console.log(outputPath);
   } finally {
     await browser.close();
