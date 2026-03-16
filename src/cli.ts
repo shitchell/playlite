@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createRequire } from 'module';
 import { Command } from 'commander';
 import { tabs } from './commands/tabs.js';
 import { connect } from './commands/connect.js';
@@ -10,12 +11,15 @@ import { evalCommand } from './commands/eval.js';
 import { run } from './commands/run.js';
 import { launch } from './commands/launch.js';
 
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json') as { version: string };
+
 const program = new Command();
 
 program
   .name('playlite')
   .description('Playwright-based browser debugging CLI for AI agents')
-  .version('1.0.0');
+  .version(pkg.version);
 
 // ----------------------------------------------------------------------------
 // tabs — list open tabs
@@ -35,11 +39,13 @@ program
 program
   .command('connect [port]')
   .description('Test connectivity to a running browser')
-  .option('--port <n>', 'CDP port (overrides positional argument)', '9222')
+  .option('--port <n>', 'CDP port', '9222')
   .action(async (portArg, options) => {
-    // Positional [port] overrides --port default; explicit --port wins over positional
-    const effectivePort = options.port !== '9222' ? options.port : (portArg ?? options.port);
-    await connect(effectivePort, { port: effectivePort });
+    // The optional positional arg is a convenience alias for --port.
+    // If both are given, --port wins (commander sets it explicitly).
+    // If only positional is given, use it.
+    const effectivePort: string = portArg ?? options.port;
+    await connect(portArg, { port: effectivePort });
   });
 
 // ----------------------------------------------------------------------------
@@ -131,5 +137,12 @@ program
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);
 }
+
+/** Print unhandled rejections (thrown from command actions) cleanly, without stack traces. */
+process.on('unhandledRejection', (reason: unknown) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  console.error(message);
+  process.exit(1);
+});
 
 program.parse();
