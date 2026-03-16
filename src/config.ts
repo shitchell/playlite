@@ -35,7 +35,6 @@ export function findPlayliteDir(startDir?: string): string {
   let dir = resolve(startDir ?? process.cwd());
 
   // Walk up until we hit the filesystem root
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const candidate = join(dir, '.playlite');
     if (existsSync(candidate) && statSync(candidate).isDirectory()) {
@@ -61,7 +60,6 @@ export function findPlayliteDir(startDir?: string): string {
 export function findTsconfig(startDir: string): string | null {
   let dir = resolve(startDir);
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const candidate = join(dir, 'tsconfig.json');
     if (existsSync(candidate)) {
@@ -86,9 +84,11 @@ export async function loadConfig(): Promise<PlayliteConfig> {
   let playliteDir: string;
   try {
     playliteDir = findPlayliteDir();
-  } catch {
-    // No .playlite/ dir — just return defaults
-    return { ...DEFAULT_CONFIG };
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('No .playlite/')) {
+      return { ...DEFAULT_CONFIG };
+    }
+    throw err;
   }
 
   const configPath = join(playliteDir, 'config.ts');
