@@ -1,0 +1,34 @@
+{
+  "name": "playlite",
+  "version": "1.0.0",
+  "description": "Playwright-based browser debugging CLI for AI agents",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "bin": {
+    "playlite": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shitchell/playlite.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shitchell/playlite/issues"
+  },
+  "homepage": "https://github.com/shitchell/playlite#readme",
+  "dependencies": {
+    "commander": "^14.0.3",
+    "playwright-core": "^1.58.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
