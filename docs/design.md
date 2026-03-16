@@ -1,4 +1,21 @@
-# playlite — Design Document
+# playlite -- Design Document
+
+> **Historical document.** This was written before implementation as the design
+> specification. The implementation is complete and closely follows this doc, with
+> a few deviations noted below. For current documentation, see [usage.md](usage.md)
+> and [architecture.md](architecture.md).
+>
+> **Deviations from this design:**
+> - **Environment variables** (`PLAYLITE_PORT`, `PLAYLITE_PROFILE`, `PLAYLITE_CONFIG`)
+>   were not implemented. Configuration is handled solely via `.playlite/config.ts`
+>   and CLI flags.
+> - **Tab selection** uses 1-based array index (matching the `playlite tabs` output),
+>   not CDP target ID as described in some sections below.
+> - **esbuild fallback** for TypeScript compilation was not implemented. tsx is the
+>   sole compiler, used both programmatically (via `tsImport`) and as a subprocess.
+> - **`--quiet` / `--verbose` flags** were not implemented.
+
+---
 
 ## What This Is
 

@@ -1,4 +1,11 @@
-# playlite — Implementation Plan
+# playlite -- Implementation Plan
+
+> **Historical document.** This was the implementation plan used to build playlite.
+> All seven chunks have been completed. The plan is preserved here for reference on
+> the order of implementation and the rationale behind the chunk boundaries.
+> For current documentation, see [usage.md](usage.md) and [architecture.md](architecture.md).
+
+---
 
 ## Prerequisites
 
