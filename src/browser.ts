@@ -108,7 +108,7 @@ export async function selectPage(pages: Page[], tabFilter?: string): Promise<Pag
   // Rule 4: no filter, multiple pages
   const tabList = await formatTabList(pages);
   throw new Error(
-    'Error: Multiple tabs open. Use --tab to select:\n' +
+    'Multiple tabs open. Use --tab to select:\n' +
     tabList
   );
 }

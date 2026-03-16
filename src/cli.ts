@@ -42,7 +42,7 @@ program
   .option('--port <n>', 'CDP port', '9222')
   .action(async (portArg, options) => {
     // The optional positional arg is a convenience alias for --port.
-    // If both are given, --port wins (commander sets it explicitly).
+    // Positional wins if given; falls back to --port (or its default).
     // If only positional is given, use it.
     const effectivePort: string = portArg ?? options.port;
     await connect(portArg, { port: effectivePort });
