@@ -3,9 +3,11 @@
  *
  * Walks up from CWD to find the nearest .playlite/ directory and loads its
  * config.ts if present.
- *
- * Implemented in Chunk 4.
  */
+
+import { existsSync, statSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+import { importTs } from './loader.js';
 
 export interface PlayliteConfig {
   /** Default CDP port (default: 9222) */
@@ -23,17 +25,81 @@ const DEFAULT_CONFIG: PlayliteConfig = {
 };
 
 /**
- * Walk up from startDir (default: process.cwd()) looking for a .playlite/
- * directory. Returns the path if found, or null.
+ * Walk up from startDir (default: process.cwd()) looking for a directory
+ * that contains a `.playlite/` subdirectory. Returns the absolute path to
+ * the `.playlite/` directory itself.
+ *
+ * Throws with an actionable message if no `.playlite/` is found.
  */
-export function findPlayliteDir(_startDir?: string): string | null {
-  throw new Error('not implemented');
+export function findPlayliteDir(startDir?: string): string {
+  let dir = resolve(startDir ?? process.cwd());
+
+  // Walk up until we hit the filesystem root
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const candidate = join(dir, '.playlite');
+    if (existsSync(candidate) && statSync(candidate).isDirectory()) {
+      return candidate;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      // Reached filesystem root
+      break;
+    }
+    dir = parent;
+  }
+
+  throw new Error(
+    'No .playlite/ directory found. Create one with: mkdir .playlite'
+  );
 }
 
 /**
- * Load and return the resolved config. Returns defaults if no config file
- * is found.
+ * Find the nearest tsconfig.json starting from the given directory and
+ * walking up. Returns the absolute path or null if not found.
+ */
+export function findTsconfig(startDir: string): string | null {
+  let dir = resolve(startDir);
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const candidate = join(dir, 'tsconfig.json');
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+}
+
+/**
+ * Load and return the resolved config.
+ *
+ * 1. Find the .playlite/ directory
+ * 2. If .playlite/config.ts exists, dynamically import it and merge with defaults
+ * 3. If no config.ts, return defaults
  */
 export async function loadConfig(): Promise<PlayliteConfig> {
-  return { ...DEFAULT_CONFIG };
+  let playliteDir: string;
+  try {
+    playliteDir = findPlayliteDir();
+  } catch {
+    // No .playlite/ dir — just return defaults
+    return { ...DEFAULT_CONFIG };
+  }
+
+  const configPath = join(playliteDir, 'config.ts');
+  if (!existsSync(configPath)) {
+    return { ...DEFAULT_CONFIG };
+  }
+
+  // Dynamically import the config TS file via tsx
+  const tsconfig = findTsconfig(playliteDir);
+  const mod = await importTs(configPath, tsconfig);
+  const userConfig: Partial<PlayliteConfig> = (mod.default ?? mod) as Partial<PlayliteConfig>;
+
+  return { ...DEFAULT_CONFIG, ...userConfig };
 }
