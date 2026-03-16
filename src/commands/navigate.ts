@@ -19,7 +19,8 @@ export async function navigate(url: string, options: NavigateOptions): Promise<v
 
     await page.goto(url, { waitUntil: 'domcontentloaded' });
 
-    console.error(`Navigated to: ${url}`);
+    console.error(`Navigated to ${url}`);
+    console.log(url);
   } finally {
     await browser.close();
   }
