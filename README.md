@@ -336,14 +336,6 @@ export default {
 
 All fields are optional. The config is used by `playlite launch`. The `port` value becomes the default for all commands.
 
-**Environment variables** also work:
-
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `PLAYLITE_PORT` | Default CDP port | `9222` |
-| `PLAYLITE_PROFILE` | Default browser profile path | (temp dir) |
-| `PLAYLITE_CONFIG` | Path to `.playlite/` directory | (auto-detected) |
-
 ---
 
 ## Integration with Playwright Tests

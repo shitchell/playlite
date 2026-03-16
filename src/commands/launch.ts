@@ -26,14 +26,14 @@ export async function launch(options: LaunchOptions): Promise<void> {
       headless: options.headless,
       args,
     });
-    console.log(`Launched browser on port ${port}`);
-    console.log(`Profile: ${profilePath}`);
+    console.error(`Launched browser on port ${port}`);
+    console.error(`Profile: ${profilePath}`);
   } else {
     browser = await chromium.launch({
       headless: options.headless,
       args,
     });
-    console.log(`Launched browser on port ${port}`);
+    console.error(`Launched browser on port ${port}`);
   }
 
   if (options.url) {
