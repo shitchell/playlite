@@ -1,3 +1,7 @@
+import { chromium } from 'playwright-core';
+import type { Browser, BrowserContext } from 'playwright-core';
+import * as path from 'path';
+
 export interface LaunchOptions {
   port: string;
   profile?: string;
@@ -6,5 +10,47 @@ export interface LaunchOptions {
 }
 
 export async function launch(options: LaunchOptions): Promise<void> {
-  console.log('not implemented');
+  const port = parseInt(options.port, 10);
+  if (isNaN(port)) {
+    console.error(`Invalid port: "${options.port}"`);
+    process.exit(1);
+  }
+
+  const args = [`--remote-debugging-port=${port}`];
+  let browser: Browser | null = null;
+  let context: BrowserContext | null = null;
+
+  if (options.profile) {
+    const profilePath = path.resolve(options.profile);
+    context = await chromium.launchPersistentContext(profilePath, {
+      headless: options.headless,
+      args,
+    });
+    console.log(`port: ${port}`);
+    console.log(`profile: ${profilePath}`);
+  } else {
+    browser = await chromium.launch({
+      headless: options.headless,
+      args,
+    });
+    console.log(`port: ${port}`);
+  }
+
+  if (options.url) {
+    const page = context ? context.pages()[0] ?? await context.newPage()
+                        : await browser!.newPage();
+    await page.goto(options.url);
+  }
+
+  // Keep process alive until SIGINT
+  await new Promise<void>((resolve) => {
+    process.on('SIGINT', resolve);
+  });
+
+  // Graceful shutdown
+  if (context) {
+    await context.close();
+  } else if (browser) {
+    await browser.close();
+  }
 }
