@@ -301,7 +301,7 @@ export function executeWrapper(options: RunnerOptions): void {
     const tsconfigArgs: string[] = [];
     try {
       const playliteDir = findPlayliteDir();
-      const tsconfig = findTsconfig(playliteDir);
+      const tsconfig = findTsconfig(dirname(playliteDir));
       if (tsconfig) {
         tsconfigArgs.push('--tsconfig', tsconfig);
       }
@@ -312,11 +312,18 @@ export function executeWrapper(options: RunnerOptions): void {
     // Execute the wrapper with tsx, inheriting stdio for pass-through.
     // cwd is set to the playlite package root so that `playwright-core` and
     // other dependencies resolve from playlite's own node_modules.
-    execFileSync(tsxBin, [...tsconfigArgs, tempFile], {
-      stdio: 'inherit',
-      cwd: getPackageRoot(),
-      env: { ...process.env },
-    });
+    try {
+      execFileSync(tsxBin, [...tsconfigArgs, tempFile], {
+        stdio: 'inherit',
+        cwd: getPackageRoot(),
+        env: { ...process.env },
+      });
+    } catch (err: unknown) {
+      // tsx already printed the error via inherited stderr.
+      // Exit with the subprocess's code rather than propagating the ChildProcessError.
+      const code = (err as NodeJS.ErrnoException & { status?: number }).status ?? 1;
+      process.exit(code);
+    }
   } finally {
     // Clean up temp file
     try {
