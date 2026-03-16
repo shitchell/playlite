@@ -1,4 +1,12 @@
+/**
+ * `playlite eval "<code>"` — evaluate code in the browser or Node context.
+ *
+ * Without --lib: runs code in the browser via page.evaluate() (existing behavior).
+ * With --lib: runs code in Node context via a temp wrapper with lib helpers in scope.
+ */
+
 import { connectToBrowser, selectPage } from '../browser.js';
+import { executeWrapper } from '../runner.js';
 
 export interface EvalOptions {
   port: string;
@@ -8,16 +16,25 @@ export interface EvalOptions {
 }
 
 export async function evalCommand(code: string, options: EvalOptions): Promise<void> {
-  if (options.lib?.length) {
-    console.error('--lib is not yet supported for eval. Coming in a future release.');
-    process.exit(1);
-  }
-
   const port = parseInt(options.port, 10);
   if (isNaN(port)) {
     console.error(`Invalid port: "${options.port}"`);
     process.exit(1);
   }
+
+  // With --lib: Node-context execution with lib helpers available
+  if (options.lib?.length) {
+    executeWrapper({
+      port,
+      tab: options.tab,
+      libs: options.lib,
+      code,
+      isFile: false,
+    });
+    return;
+  }
+
+  // Without --lib: browser-context eval via page.evaluate() (original behavior)
   const { browser, context } = await connectToBrowser(port);
 
   try {
