@@ -203,6 +203,16 @@ function generateWrapper(options: RunnerOptions): string {
     `  if (!context) throw new Error('Connected but no browser context found.');`,
     `  const __pages = context.pages();`,
     ``,
+    `  // Inject __name polyfill into the browser page context.`,
+    `  // esbuild/tsx's keepNames transform wraps functions with __name() which`,
+    `  // gets serialized into page.evaluate() calls. Without this polyfill,`,
+    `  // the browser throws "ReferenceError: __name is not defined".`,
+    `  for (const __p of __pages) {`,
+    `    await __p.evaluate(() => {`,
+    `      (window as any).__name = (fn: any) => fn;`,
+    `    });`,
+    `  }`,
+    ``,
     pageSelection,
   );
 
@@ -291,19 +301,38 @@ export function executeWrapper(options: RunnerOptions): void {
   mkdirSync(tempDir, { recursive: true });
   const tempFile = join(tempDir, `wrapper-${randomBytes(8).toString('hex')}.ts`);
 
+  let tempTsconfig: string | null = null;
+
   try {
     writeFileSync(tempFile, wrapperCode, 'utf8');
 
     // Find tsx binary
     const tsxBin = findTsxBin();
 
-    // Find the host project's tsconfig for path alias resolution
+    // Create a wrapper tsconfig that extends the host project's tsconfig for path
+    // aliases but overrides module settings for ESM compatibility.
+    // This also avoids esbuild's keepNames transform which adds __name helpers
+    // that break Playwright's page.evaluate() serialization.
     const tsconfigArgs: string[] = [];
     try {
       const playliteDir = findPlayliteDir();
-      const tsconfig = findTsconfig(dirname(playliteDir));
-      if (tsconfig) {
-        tsconfigArgs.push('--tsconfig', tsconfig);
+      const hostTsconfig = findTsconfig(dirname(playliteDir));
+      if (hostTsconfig) {
+        // Generate a temp tsconfig that extends the host's for paths only
+        tempTsconfig = join(tempDir, `tsconfig-${randomBytes(4).toString('hex')}.json`);
+        const wrapperTsconfig = {
+          extends: hostTsconfig,
+          compilerOptions: {
+            // Override to ESM-compatible settings for the wrapper
+            module: 'ES2022',
+            moduleResolution: 'bundler',
+            // Prevent TypeScript from erroring on JSX, dynamic imports, etc.
+            noEmit: true,
+            skipLibCheck: true,
+          },
+        };
+        writeFileSync(tempTsconfig, JSON.stringify(wrapperTsconfig), 'utf8');
+        tsconfigArgs.push('--tsconfig', tempTsconfig);
       }
     } catch {
       // No .playlite dir — that's fine, skip tsconfig
@@ -335,11 +364,10 @@ export function executeWrapper(options: RunnerOptions): void {
       process.exit(code);
     }
   } finally {
-    // Clean up temp file
-    try {
-      unlinkSync(tempFile);
-    } catch {
-      // Best effort cleanup
+    // Clean up temp files
+    try { unlinkSync(tempFile); } catch { /* best effort */ }
+    if (tempTsconfig) {
+      try { unlinkSync(tempTsconfig); } catch { /* best effort */ }
     }
   }
 }
