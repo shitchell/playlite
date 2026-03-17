@@ -44,6 +44,12 @@ playlite eval "document.title"
 
 # 6. Run a TypeScript file with your helpers injected
 playlite run --lib myapp scripts/debug.ts
+
+# Or, if your .playlite/config.ts sets libs: ['myapp'], skip the flag entirely
+playlite run scripts/debug.ts
+
+# Or pipe a script via stdin
+echo "console.log(await page.title())" | playlite run -
 ```
 
 ---
@@ -59,7 +65,7 @@ playlite run --lib myapp scripts/debug.ts
 | `playlite navigate <url>` | Navigate to a URL |
 | `playlite screenshot [path]` | Capture the page as PNG |
 | `playlite eval "<code>"` | Evaluate JS in browser context (or Node context with `--lib`) |
-| `playlite run <script.ts>` | Run a TypeScript file with browser + lib helpers in scope |
+| `playlite run [script.ts]` | Run a TypeScript file (or stdin) with browser + lib helpers in scope |
 
 All commands that connect to a browser accept `--port <n>` (default: 9222). Commands that interact with a page accept `--tab <filter>` (title substring or 1-based index).
 
@@ -90,6 +96,18 @@ playlite run --lib myapp scripts/investigate.ts
 ```
 
 Everything returned by the factory becomes a global in your script scope. Multiple `--lib` flags are supported (last-wins on name collision).
+
+You can also set default libs in `.playlite/config.ts` so you never need `--lib` at all:
+
+```typescript
+// .playlite/config.ts
+export default {
+  port: 9223,
+  libs: ['myapp'],  // Always loaded — no --lib flag needed
+};
+```
+
+Config libs are prepended to any `--lib` flags given on the command line.
 
 See [docs/usage.md#lib-system](docs/usage.md#lib-system) for the full lib authoring guide.
 

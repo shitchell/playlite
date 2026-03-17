@@ -62,16 +62,19 @@ cli.ts (commander)
   -> command handler (commands/run.ts or commands/eval.ts)
     -> executeWrapper(options)    [runner.ts]
       -> generateWrapper()        [runner.ts]
-        -> read user script (if file)
+        -> read user script (if file or stdin)
         -> splitImports()         (hoist imports out of IIFE)
         -> generatePageSelection() (inline tab selection logic)
         -> generateLibLoading()   (inline lib import + factory calls)
+        -> inject __name polyfill into browser page context
         -> assemble complete .ts wrapper file
       -> write wrapper to .tmp/wrapper-<random>.ts
       -> find tsx binary
       -> find host project's tsconfig.json
-      -> execFileSync(tsx, [--tsconfig, tsconfig, wrapper.ts])
-      -> clean up temp file
+      -> generate temp tsconfig.json extending host tsconfig (ESM overrides)
+      -> execFileSync(tsx, [--tsconfig, tempTsconfig, wrapper.ts],
+                      { cwd: projectRoot })   (CWD = parent of .playlite/)
+      -> clean up temp files
 ```
 
 This is fundamentally different: the user's code does NOT run in the playlite process. Instead, playlite generates a self-contained TypeScript file and executes it in a fresh `tsx` subprocess. This is the "temp wrapper" approach described below.
@@ -84,17 +87,19 @@ This is fundamentally different: the user's code does NOT run in the playlite pr
 
 The most architecturally significant decision. When `playlite run script.ts` is invoked:
 
-1. playlite reads the user's script
+1. playlite reads the user's script (from file or stdin)
 2. It generates a temporary `.ts` file that:
    - Imports `playwright-core`
    - Connects to the browser via CDP
    - Selects the correct page (tab)
+   - Injects a `__name` polyfill into the browser page context (see below)
    - Dynamically imports and calls lib factory functions
    - Assigns lib exports to `globalThis`
    - Runs the user's code inside a `try/finally` block
    - Closes the browser connection in `finally`
-3. It executes this wrapper via `tsx` (TypeScript runner)
-4. It deletes the temp file
+3. It generates a temporary `tsconfig.json` that extends the host project's tsconfig with ESM-compatible overrides (see Wrapper tsconfig below)
+4. It executes this wrapper via `tsx` with the temp tsconfig, with CWD set to the project root
+5. It deletes both temp files
 
 **Why not run in-process?** Several reasons:
 
@@ -105,6 +110,44 @@ The most architecturally significant decision. When `playlite run script.ts` is 
 - **Simplicity.** Generating a self-contained `.ts` file is straightforward to debug -- you can read the temp file to see exactly what's being executed. The alternative (Node's `vm` module or dynamic import hooks) is significantly more complex.
 
 **The temp file lives in `.tmp/` inside the playlite package directory** (not the host project). This ensures `playwright-core` resolves correctly from playlite's node_modules.
+
+### Wrapper tsconfig
+
+Host projects often use `"module": "commonjs"` in their tsconfig, which conflicts with the ESM imports required by the generated wrapper. The runner writes a second temp file — a `tsconfig` that `extends` the host project's tsconfig and overrides just the module-related settings:
+
+```json
+{
+  "extends": "/path/to/host/tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+This lets the wrapper use ESM-compatible syntax while still inheriting all path aliases, `baseUrl`, and other settings from the host tsconfig.
+
+### `__name` polyfill
+
+esbuild (used by tsx) applies a `keepNames` transform that rewrites function declarations as:
+
+```typescript
+const myFn = __name(function myFn() { ... }, "myFn");
+```
+
+When Playwright serializes a function passed to `page.evaluate()`, it does not know about the `__name` helper, causing a `ReferenceError: __name is not defined` inside the browser. The runner injects a no-op polyfill into the page context before running any user code:
+
+```typescript
+await page.addInitScript(() => {
+  (globalThis as any).__name = (fn: unknown) => fn;
+});
+```
+
+This is automatic and transparent — users never need to think about it.
+
+### CWD during script execution
+
+The `tsx` subprocess is started with `cwd` set to the project root (the parent directory of `.playlite/`), not to the directory where `playlite run` was invoked. This ensures that relative path resolution and environment-loading tools (e.g., `dotenv.config()`) find the correct files regardless of which subdirectory the user ran playlite from.
 
 ### Import Hoisting (splitImports in runner.ts)
 
@@ -140,9 +183,11 @@ The `findTsxBin()` function in `runner.ts` searches for tsx in order:
 2. The current project's `node_modules/.bin/tsx`
 3. Falls back to `tsx` on PATH
 
-### Configuration (scaffolded, not yet wired)
+### Configuration
 
-`config.ts` exports a `loadConfig()` function that reads `.playlite/config.ts`, but no command currently calls it. All defaults (port 9222, headed mode, no profile) are hardcoded in the commander option definitions in `cli.ts`. Wiring in `loadConfig()` is a future task -- the infrastructure is ready, it just needs to be called before commander parses options (or used to set commander defaults dynamically).
+`config.ts` exports a `loadConfig()` function that reads `.playlite/config.ts`. It is called at startup in `cli.ts` before commander parses options, and its values are used to set commander defaults dynamically. The supported fields are `port`, `profile`, `url`, `args`, and `libs`.
+
+The `libs` field is the most impactful: config libs are prepended to any `--lib` flags given on the command line, so projects can set their standard lib(s) once in config and skip `--lib` on every invocation.
 
 ### .playlite/ Directory Walk
 

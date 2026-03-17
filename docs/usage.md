@@ -26,6 +26,7 @@ Complete reference for every command, option, and feature. For a quick overview,
   - [Example Lib](#example-lib)
 - [Configuration](#configuration)
 - [Integration with Playwright Tests](#integration-with-playwright-tests)
+- [Technical Notes](#technical-notes)
 - [Error Reference](#error-reference)
 - [Output Conventions](#output-conventions)
 
@@ -273,12 +274,26 @@ playlite eval --lib myapp "console.log(await page.locator('h1').textContent())"
 
 ### `run`
 
-Run a TypeScript file with browser globals and lib helpers injected into scope. This is the primary command for debugging sessions.
+Run a TypeScript file (or stdin) with browser globals and lib helpers injected into scope. This is the primary command for debugging sessions.
+
+The script argument is optional. Three input modes are supported:
 
 ```bash
+# File path (standard usage)
 playlite run scripts/check-state.ts
 playlite run --lib asset-suite scripts/debug-m106.ts
 playlite run --lib core --lib myapp scripts/investigate.ts
+
+# Explicit stdin marker
+playlite run -
+
+# Heredoc or pipe (stdin auto-detected when no argument and not a TTY)
+playlite run << 'EOF'
+await as.searchAndNavigate('M106');
+console.log(await page.title());
+EOF
+
+echo "console.log(await page.title())" | playlite run
 ```
 
 **Options:**
@@ -476,9 +491,7 @@ Note: to run this example, the lib must be at `.playlite/libs/greeter.ts` (playl
 
 ### `.playlite/config.ts`
 
-The infrastructure for a project-level config file exists in the codebase (`src/config.ts` exports `loadConfig()`), but it is **not yet wired into any command**. The config file will be loaded and used in a future release.
-
-The intended shape is:
+Place a `config.ts` file in your `.playlite/` directory to set project-level defaults. The config is loaded at startup and its values are used as defaults for all commands (CLI flags still override them).
 
 ```typescript
 // .playlite/config.ts
@@ -494,10 +507,15 @@ export default {
 
   // Extra browser launch args
   args: ['--disable-web-security'],
+
+  // Default libs — always loaded by run/eval, no --lib flag needed
+  libs: ['asset-suite'],
 };
 ```
 
-**Current behavior:** All defaults are hardcoded (port 9222, headed mode, no profile). Use CLI flags to override them.
+**`libs` field:** Config libs are prepended to any `--lib` flags given on the command line. This lets projects skip `--lib` entirely for their standard helper(s). If the same lib name appears in both config and CLI flags, it is loaded once (CLI flag order preserved after config libs).
+
+**Fallback behavior:** If no config file exists, all defaults remain hardcoded (port 9222, headed mode, no profile).
 
 ---
 
@@ -564,6 +582,22 @@ playlite run --lib asset-suite --tab "Asset" /tmp/debug-m106.ts
 
 # 7. Copy the working code into the test, press Enter to let the fixture tear down
 ```
+
+---
+
+## Technical Notes
+
+### `__name` polyfill
+
+When running scripts with `run` or `eval --lib`, playlite injects a `__name` polyfill into the browser page context. This is a workaround for a conflict between esbuild/tsx's `keepNames` transform (which wraps functions with `__name(fn, "name")` calls) and Playwright's `page.evaluate()` serialization (which does not know about `__name`). The polyfill is injected automatically before any user code runs — no configuration is needed.
+
+### Wrapper tsconfig
+
+The runner generates a temporary `tsconfig.json` that extends the host project's `tsconfig.json` with ESM-compatible overrides (`"module": "ESNext"`, `"moduleResolution": "bundler"`). This prevents CJS/ESM conflicts when the host project uses `"module": "commonjs"` in its own tsconfig. The wrapper tsconfig is written to `.tmp/` alongside the wrapper script and cleaned up after execution.
+
+### CWD during script execution
+
+The runner sets the working directory of the `tsx` subprocess to the project root (the parent directory of `.playlite/`), not to the directory where `playlite run` was invoked. This ensures that tools relying on CWD for resolution — such as `dotenv.config()` — find the project's `.env` file correctly regardless of where you invoke playlite from.
 
 ---
 
