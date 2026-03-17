@@ -18,6 +18,8 @@ export interface PlayliteConfig {
   url?: string;
   /** Extra browser launch args */
   args?: string[];
+  /** Libs to always load (merged with CLI --lib flags; config libs come first) */
+  libs?: string[];
 }
 
 const DEFAULT_CONFIG: PlayliteConfig = {

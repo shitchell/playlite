@@ -21,6 +21,7 @@ const pkg = require('../package.json') as { version: string };
 (async () => {
 const config = await loadConfig();
 const defaultPort = String(config.port);
+const configLibs: string[] = config.libs ?? [];
 
 const program = new Command();
 
@@ -107,19 +108,26 @@ program
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .option('--json', 'Force JSON output', false)
   .action(async (code, options) => {
+    // Merge config libs (first) with CLI --lib flags (appended/override).
+    options.lib = [...configLibs, ...options.lib];
     await evalCommand(code, options);
   });
 
 // ----------------------------------------------------------------------------
-// run <script.ts> — run a TypeScript file with helpers injected
+// run [script.ts] — run a TypeScript file (or stdin) with helpers injected
 // ----------------------------------------------------------------------------
 program
-  .command('run <script>')
-  .description('Run a TypeScript file with browser and lib helpers injected into scope')
+  .command('run [script]')
+  .description(
+    'Run a TypeScript file with browser and lib helpers injected into scope. ' +
+    'Pass - or omit the script argument to read from stdin.'
+  )
   .option('--port <n>', 'CDP port', defaultPort)
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .action(async (script, options) => {
+    // Merge config libs (first) with CLI --lib flags (appended/override).
+    options.lib = [...configLibs, ...options.lib];
     await run(script, options);
   });
 
