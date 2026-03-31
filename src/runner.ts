@@ -13,7 +13,7 @@
  * user's stdout/stderr flows through naturally.
  */
 
-import { readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -130,10 +130,12 @@ function generatePageSelection(tab?: string): string {
  * Generate lib-loading code that calls each lib factory and merges exports
  * onto globalThis so the user's code can reference them as bare identifiers.
  */
-function generateLibLoading(libs: string[]): string {
+function generateLibLoading(libs: string[], playliteDir: string | null): string {
   if (libs.length === 0) return '';
 
-  const playliteDir = findPlayliteDir();
+  if (!playliteDir) {
+    throw new Error('No .playlite/ directory found. Libs require a .playlite/libs/ directory.');
+  }
   const lines: string[] = [
     `  // Load libs`,
     `  const __mergedExports: Record<string, unknown> = {};`,
@@ -164,7 +166,7 @@ function generateLibLoading(libs: string[]): string {
 /**
  * Generate the complete wrapper source code.
  */
-function generateWrapper(options: RunnerOptions): string {
+function generateWrapper(options: RunnerOptions, playliteDir: string | null): string {
   const { port, tab, libs, code, isFile } = options;
 
   // Get the user's source code
@@ -181,7 +183,7 @@ function generateWrapper(options: RunnerOptions): string {
 
   // Generate subsections
   const pageSelection = generatePageSelection(tab);
-  const libLoading = generateLibLoading(libs);
+  const libLoading = generateLibLoading(libs, playliteDir);
 
   // Assemble the wrapper
   const parts: string[] = [
@@ -272,11 +274,8 @@ function findTsxBin(): string {
   ];
 
   for (const candidate of candidates) {
-    try {
-      execFileSync(candidate, ['--version'], { stdio: 'ignore' });
+    if (existsSync(candidate)) {
       return candidate;
-    } catch {
-      continue;
     }
   }
 
@@ -291,7 +290,15 @@ function findTsxBin(): string {
  * and cleans up afterward. Throws on non-zero exit.
  */
 export function executeWrapper(options: RunnerOptions): void {
-  const wrapperCode = generateWrapper(options);
+  // Resolve .playlite/ directory once for the entire execution
+  let playliteDir: string | null = null;
+  try {
+    playliteDir = findPlayliteDir();
+  } catch {
+    // No .playlite/ dir — libs, tsconfig, and project root features unavailable
+  }
+
+  const wrapperCode = generateWrapper(options, playliteDir);
 
   // Write the temp file inside the playlite package directory so that tsx
   // resolves `playwright-core` and other dependencies from the package's own
@@ -314,19 +321,15 @@ export function executeWrapper(options: RunnerOptions): void {
     // This also avoids esbuild's keepNames transform which adds __name helpers
     // that break Playwright's page.evaluate() serialization.
     const tsconfigArgs: string[] = [];
-    try {
-      const playliteDir = findPlayliteDir();
+    if (playliteDir) {
       const hostTsconfig = findTsconfig(dirname(playliteDir));
       if (hostTsconfig) {
-        // Generate a temp tsconfig that extends the host's for paths only
         tempTsconfig = join(tempDir, `tsconfig-${randomBytes(4).toString('hex')}.json`);
         const wrapperTsconfig = {
           extends: hostTsconfig,
           compilerOptions: {
-            // Override to ESM-compatible settings for the wrapper
             module: 'ES2022',
             moduleResolution: 'bundler',
-            // Prevent TypeScript from erroring on JSX, dynamic imports, etc.
             noEmit: true,
             skipLibCheck: true,
           },
@@ -334,8 +337,6 @@ export function executeWrapper(options: RunnerOptions): void {
         writeFileSync(tempTsconfig, JSON.stringify(wrapperTsconfig), 'utf8');
         tsconfigArgs.push('--tsconfig', tempTsconfig);
       }
-    } catch {
-      // No .playlite dir — that's fine, skip tsconfig
     }
 
     // Execute the wrapper with tsx, inheriting stdio for pass-through.
@@ -343,13 +344,7 @@ export function executeWrapper(options: RunnerOptions): void {
     // like dotenv.config() find the user's .env file. tsx resolves imports
     // from the temp file's location (inside playlite's .tmp/), so
     // playwright-core still resolves from playlite's own node_modules.
-    let projectRoot: string;
-    try {
-      const playliteDir = findPlayliteDir();
-      projectRoot = dirname(playliteDir);
-    } catch {
-      projectRoot = process.cwd(); // fallback if no .playlite/
-    }
+    const projectRoot = playliteDir ? dirname(playliteDir) : process.cwd();
 
     try {
       execFileSync(tsxBin, [...tsconfigArgs, tempFile], {

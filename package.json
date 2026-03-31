@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/cli.js",
   "bin": {
-    "playlite": "./dist/cli.js"
+    "playlite": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -15,13 +15,28 @@
     "type": "git",
     "url": "git+https://github.com/shitchell/playlite.git"
   },
-  "keywords": ["playwright", "browser", "debugging", "cli", "cdp", "ai-agents"],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "playwright",
+    "browser",
+    "debugging",
+    "cli",
+    "cdp",
+    "ai-agents"
+  ],
+  "author": "Shaun Mitchell <shaun@shitchell.com>",
+  "license": "WTFPL",
   "bugs": {
     "url": "https://github.com/shitchell/playlite/issues"
   },
   "homepage": "https://github.com/shitchell/playlite#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "commander": "^14.0.3",
     "playwright-core": "^1.58.2",

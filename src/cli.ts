@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createRequire } from 'module';
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { tabs } from './commands/tabs.js';
 import { connect } from './commands/connect.js';
@@ -54,7 +54,7 @@ program
     // Positional wins if given; falls back to --port (or its default).
     // If only positional is given, use it.
     const effectivePort: string = portArg ?? options.port;
-    await connect(portArg, { port: effectivePort });
+    await connect({ port: effectivePort });
   });
 
 // ----------------------------------------------------------------------------

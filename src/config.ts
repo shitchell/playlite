@@ -76,6 +76,17 @@ export function findTsconfig(startDir: string): string | null {
 }
 
 /**
+ * Parse and validate a port string. Exits with an error if invalid.
+ */
+export function parsePort(portStr: string): number {
+  const port = parseInt(portStr, 10);
+  if (isNaN(port)) {
+    throw new Error(`Invalid port: "${portStr}"`);
+  }
+  return port;
+}
+
+/**
  * Load and return the resolved config.
  *
  * 1. Find the .playlite/ directory
