@@ -1,1 +1,4 @@
 project_id: daab21d2-e47f-4943-b477-859c927aa584
+coverage:
+  exclude: [".cwork/**"]
+suppress_diagnostics: ["W005", "W011"]

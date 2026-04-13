@@ -58,6 +58,13 @@ goals:
       live browsers.
     tags: [core, debugging]
     maps_to: []
+    refs:
+      - file: docs/design.md
+        identifier: Why
+        role: defines
+      - file: README.md
+        identifier: Integration with Playwright Tests
+        role: defines
 
   - id: G2
     name: AI-agent-first browser debugging
@@ -67,6 +74,10 @@ goals:
       is Claude Code and similar AI agents, not humans in a REPL.
     tags: [core, ai-agents]
     maps_to: [project:G1]
+    refs:
+      - file: docs/design.md
+        identifier: What This Is
+        role: defines
 
   - id: G3
     name: Zero-translation copy-paste promise
@@ -85,6 +96,16 @@ goals:
       debugging scripts can use the exact same helpers as test code.
     tags: [core, libs]
     maps_to: [project:G1, project:G3]
+    refs:
+      - file: README.md
+        identifier: Lib System (the key feature)
+        role: defines
+      - file: docs/usage.md
+        identifier: Lib System
+        role: defines
+      - file: docs/design.md
+        identifier: Lib System
+        role: defines
 
 values:
   - id: V1
@@ -105,6 +126,10 @@ values:
       human-readable alternative is possible.
     tags: [dx, errors]
     maps_to: []
+    refs:
+      - file: docs/usage.md
+        identifier: Error Reference
+        role: defines
 
   - id: V3
     name: Host project compatibility
@@ -114,6 +139,10 @@ values:
       the same imports as the project's test files.
     tags: [compatibility, libs]
     maps_to: []
+    refs:
+      - file: docs/design.md
+        identifier: Path Alias Resolution
+        role: defines
 
   - id: V4
     name: Predictable output conventions
@@ -123,6 +152,10 @@ values:
       programmatic consumption by AI agents.
     tags: [cli, output]
     maps_to: []
+    refs:
+      - file: docs/usage.md
+        identifier: Output Conventions
+        role: defines
 
 principles:
   - id: P1
@@ -134,6 +167,13 @@ principles:
       omissions, not TODOs.
     tags: [scope, non-goals]
     maps_to: [project:G2, project:V1]
+    refs:
+      - file: docs/architecture.md
+        identifier: Non-Goals
+        role: defines
+      - file: docs/design.md
+        identifier: Non-Goals
+        role: defines
 
   - id: P2
     name: No bundled browsers
@@ -164,6 +204,10 @@ principles:
       to have one .playlite/ at the root or per-subproject overrides.
     tags: [architecture, config]
     maps_to: [project:G4, project:V3]
+    refs:
+      - file: docs/architecture.md
+        identifier: .playlite/ Directory Walk
+        role: defines
 
   - id: P5
     name: Lib exports as bare globals
@@ -174,6 +218,10 @@ principles:
       Playwright test file, supporting the copy-paste promise.
     tags: [libs, dx]
     maps_to: [project:G3, project:G4, project:V3]
+    refs:
+      - file: docs/architecture.md
+        identifier: Lib Loading as globalThis Assignment
+        role: defines
 
 decisions:
   - id: D1
@@ -205,6 +253,15 @@ decisions:
       - file: src/runner.ts
         identifier: executeWrapper
         role: implements
+      - file: docs/architecture.md
+        identifier: The Temp Wrapper Approach (runner.ts)
+        role: defines
+      - file: docs/architecture.md
+        identifier: Script execution (run, eval --lib)
+        role: defines
+      - file: docs/design.md
+        identifier: Script Execution
+        role: defines
 
   - id: D2
     name: tsx as sole TypeScript compiler
@@ -231,6 +288,9 @@ decisions:
       - file: src/runner.ts
         identifier: findTsxBin
         role: implements
+      - file: docs/architecture.md
+        identifier: tsx for TypeScript (loader.ts)
+        role: defines
 
   - id: D3
     name: commander for CLI framework
@@ -253,6 +313,12 @@ decisions:
       - file: src/cli.ts
         identifier: program
         role: implements
+      - file: docs/architecture.md
+        identifier: Tech Stack
+        role: defines
+      - file: docs/design.md
+        identifier: Tech Stack
+        role: defines
 
   - id: D4
     name: __name polyfill for page.evaluate compatibility
@@ -273,6 +339,12 @@ decisions:
       - file: src/runner.ts
         identifier: generateWrapper
         role: implements
+      - file: docs/architecture.md
+        identifier: "`__name` polyfill"
+        role: defines
+      - file: docs/usage.md
+        identifier: "`__name` polyfill"
+        role: defines
 
   - id: D5
     name: Wrapper tsconfig extending host tsconfig
@@ -293,6 +365,12 @@ decisions:
       - file: src/runner.ts
         identifier: executeWrapper
         role: implements
+      - file: docs/architecture.md
+        identifier: Wrapper tsconfig
+        role: defines
+      - file: docs/usage.md
+        identifier: Wrapper tsconfig
+        role: defines
 
   - id: D6
     name: CWD set to project root during script execution
@@ -312,6 +390,12 @@ decisions:
       - file: src/runner.ts
         identifier: executeWrapper
         role: implements
+      - file: docs/architecture.md
+        identifier: CWD during script execution
+        role: defines
+      - file: docs/usage.md
+        identifier: CWD during script execution
+        role: defines
 
   - id: D7
     name: Import hoisting via pragmatic heuristic
@@ -336,6 +420,9 @@ decisions:
       - file: src/runner.ts
         identifier: splitImports
         role: implements
+      - file: docs/architecture.md
+        identifier: Import Hoisting (splitImports in runner.ts)
+        role: defines
 
   - id: D8
     name: Dual execution modes for eval
@@ -357,6 +444,12 @@ decisions:
       - file: src/commands/eval.ts
         identifier: evalCommand
         role: implements
+      - file: docs/architecture.md
+        identifier: Two Execution Modes for eval
+        role: defines
+      - file: docs/usage.md
+        identifier: "`eval`"
+        role: defines
 
   - id: D9
     name: Config libs prepended to CLI --lib flags
@@ -377,6 +470,21 @@ decisions:
       - file: src/cli.ts
         identifier: program
         role: implements
+      - file: docs/architecture.md
+        identifier: Configuration
+        role: defines
+      - file: docs/usage.md
+        identifier: Configuration
+        role: defines
+      - file: docs/usage.md
+        identifier: "`.playlite/config.ts`"
+        role: defines
+      - file: docs/design.md
+        identifier: Configuration
+        role: defines
+      - file: docs/design.md
+        identifier: "`.playlite/config.ts`"
+        role: defines
 
   - id: D10
     name: Environment variables not implemented
@@ -392,7 +500,10 @@ decisions:
       simpler.
     tags: [config]
     maps_to: [project:G2, project:V1]
-    refs: []
+    refs:
+      - file: docs/design.md
+        identifier: Environment Variables
+        role: defines
 
   - id: D11
     name: 1-based tab indexing
@@ -418,6 +529,12 @@ decisions:
       - file: src/browser.ts
         identifier: listTabs
         role: implements
+      - file: docs/usage.md
+        identifier: Tab Selection
+        role: defines
+      - file: docs/design.md
+        identifier: Tab Selection Logic
+        role: defines
 
   - id: D12
     name: Stdin support for run command
@@ -436,6 +553,9 @@ decisions:
       - file: src/commands/run.ts
         identifier: run
         role: implements
+      - file: docs/usage.md
+        identifier: "`run`"
+        role: defines
 
   - id: D13
     name: No test suite
@@ -492,11 +612,11 @@ decisions:
         identifier: scripts
         role: defines
       - file: src/runner.test.ts
-        identifier: splitImports
-        role: uses
+        identifier: runner-unit-tests
+        role: implements
       - file: src/config.test.ts
-        identifier: parsePort
-        role: uses
+        identifier: config-unit-tests
+        role: implements
 
 constraints:
   - id: C1
