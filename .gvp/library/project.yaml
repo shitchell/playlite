@@ -1,0 +1,541 @@
+meta:
+  name: playlite
+  scope: project
+  definitions:
+    tags:
+      core:
+        description: Core project goals and features
+      debugging:
+        description: Browser debugging functionality
+      ai-agents:
+        description: AI agent usability concerns
+      dx:
+        description: Developer experience
+      libs:
+        description: Lib system (project helper injection)
+      architecture:
+        description: Codebase structure and design patterns
+      compatibility:
+        description: Host project and environment compatibility
+      cli:
+        description: CLI behavior and output
+      output:
+        description: stdout/stderr output conventions
+      scope:
+        description: Project scope boundaries
+      non-goals:
+        description: Intentional omissions
+      dependencies:
+        description: External dependency choices
+      runner:
+        description: Script runner and temp wrapper system
+      config:
+        description: Configuration system
+      errors:
+        description: Error handling and messages
+      browser:
+        description: Browser interaction and CDP
+      eval:
+        description: Eval command behavior
+      tabs:
+        description: Tab selection and listing
+      run:
+        description: Run command behavior
+      testing:
+        description: Testing strategy and coverage
+      gap:
+        description: Identified gaps or missing capabilities
+      runtime:
+        description: Runtime environment requirements
+
+goals:
+  - id: G1
+    name: Bridge the debugging gap
+    statement: >
+      Bridge the gap between CDP tools (raw browser JS, no helpers) and
+      Playwright tests (full helpers but browser closes on failure) so that
+      developers and AI agents can run project-specific helper code against
+      live browsers.
+    tags: [core, debugging]
+    maps_to: []
+
+  - id: G2
+    name: AI-agent-first browser debugging
+    statement: >
+      Provide a scriptable, non-interactive CLI that AI coding agents can use
+      to debug browser-based test failures programmatically. The primary user
+      is Claude Code and similar AI agents, not humans in a REPL.
+    tags: [core, ai-agents]
+    maps_to: [project:G1]
+
+  - id: G3
+    name: Zero-translation copy-paste promise
+    statement: >
+      Debugging scripts written with playlite must be directly copy-pasteable
+      into Playwright test files with no translation. The same page object,
+      await patterns, and lib helpers work in both contexts.
+    tags: [core, dx]
+    maps_to: [project:G1]
+
+  - id: G4
+    name: Project helper injection
+    statement: >
+      Load project-specific test helper libraries (the same classes and
+      functions used in Playwright tests) into the debugging scope, so
+      debugging scripts can use the exact same helpers as test code.
+    tags: [core, libs]
+    maps_to: [project:G1, project:G3]
+
+values:
+  - id: V1
+    name: Simplicity over abstraction
+    statement: >
+      Keep the tool minimal. Prefer straightforward code that is easy to
+      debug (e.g., generating a readable temp file) over clever abstractions
+      (e.g., Node vm module, dynamic import hooks). The codebase should be
+      small enough that reading the source is practical.
+    tags: [architecture]
+    maps_to: []
+
+  - id: V2
+    name: Actionable error messages
+    statement: >
+      Every error message must tell the user what went wrong AND what to do
+      about it. Never show a raw stack trace or cryptic message when a
+      human-readable alternative is possible.
+    tags: [dx, errors]
+    maps_to: []
+
+  - id: V3
+    name: Host project compatibility
+    statement: >
+      Work seamlessly with the host project's TypeScript configuration,
+      path aliases, and dependency versions. Libs and scripts should use
+      the same imports as the project's test files.
+    tags: [compatibility, libs]
+    maps_to: []
+
+  - id: V4
+    name: Predictable output conventions
+    statement: >
+      Machine-readable data goes to stdout. Human-readable status goes to
+      stderr. Errors go to stderr. This enables reliable piping and
+      programmatic consumption by AI agents.
+    tags: [cli, output]
+    maps_to: []
+
+principles:
+  - id: P1
+    name: Not a REPL, not a test runner, not a recorder
+    statement: >
+      playlite is a debugging tool. It does not provide interactive mode
+      (AI agents send commands, not keystrokes), test execution (use
+      Playwright for that), or codegen recording. These are intentional
+      omissions, not TODOs.
+    tags: [scope, non-goals]
+    maps_to: [project:G2, project:V1]
+
+  - id: P2
+    name: No bundled browsers
+    statement: >
+      Use playwright-core (not playwright) to avoid downloading browser
+      binaries. playlite connects to whatever Chromium the user already
+      has running. This keeps the package lightweight and avoids version
+      conflicts.
+    tags: [architecture, dependencies]
+    maps_to: [project:G1, project:V1]
+
+  - id: P3
+    name: Subprocess isolation for script execution
+    statement: >
+      User scripts run in a separate tsx subprocess, not in the playlite
+      process. This provides loader isolation (tsx's TS loader needs
+      process-startup registration), dependency isolation (playwright-core
+      from playlite's node_modules, project imports from host tsconfig),
+      and debuggability (the temp wrapper is a readable .ts file).
+    tags: [architecture, runner]
+    maps_to: [project:G3, project:V1, project:V3]
+
+  - id: P4
+    name: Walk-up directory discovery
+    statement: >
+      Find .playlite/ and tsconfig.json by walking up from CWD to the
+      filesystem root, mirroring how git finds .git/. This allows monorepos
+      to have one .playlite/ at the root or per-subproject overrides.
+    tags: [architecture, config]
+    maps_to: [project:G4, project:V3]
+
+  - id: P5
+    name: Lib exports as bare globals
+    statement: >
+      Lib factory return values are assigned to globalThis so user code
+      references them as bare identifiers (e.g., helper instead of
+      libs.helper). This matches how the same objects would appear in a
+      Playwright test file, supporting the copy-paste promise.
+    tags: [libs, dx]
+    maps_to: [project:G3, project:G4, project:V3]
+
+decisions:
+  - id: D1
+    name: Temp wrapper approach for script execution
+    status: active
+    statement: >
+      Generate a self-contained temporary .ts file that connects to the
+      browser, loads libs, and inlines user code inside an async IIFE,
+      then execute it via tsx subprocess. Chosen over Node vm module and
+      dynamic import hooks for simplicity and debuggability.
+    rationale: >
+      Loader isolation: tsx's TS loader must be registered at process
+      startup. Dependency isolation: playwright-core resolves from
+      playlite's node_modules while project imports resolve from host
+      tsconfig. Simplicity: the temp file is readable and debuggable.
+    tags: [architecture, runner]
+    maps_to: [project:P3, project:G3, project:V1]
+    considered:
+      Node vm module:
+        description: Run user code in a Node.js VM context within the playlite process.
+        rationale: Rejected. Complex to set up TypeScript loader correctly, and dependency isolation is difficult.
+      Dynamic import hooks:
+        description: Register custom import hooks for the user's code at runtime.
+        rationale: Rejected. Fragile because tsx's loader needs to be registered at process startup, not at runtime.
+    refs:
+      - file: src/runner.ts
+        identifier: generateWrapper
+        role: implements
+      - file: src/runner.ts
+        identifier: executeWrapper
+        role: implements
+
+  - id: D2
+    name: tsx as sole TypeScript compiler
+    status: active
+    statement: >
+      Use tsx for all TypeScript compilation needs: tsImport() for
+      programmatic dynamic imports (config, libs in simple commands) and
+      tsx binary for subprocess execution of temp wrappers. The design doc's
+      esbuild fallback was not implemented.
+    rationale: >
+      tsx handles both programmatic (tsImport from tsx/esm/api) and CLI
+      use cases, supports tsconfig paths natively, and is fast enough for
+      debugging scripts. One compiler simplifies the dependency graph.
+    tags: [architecture, dependencies]
+    maps_to: [project:G3, project:V1]
+    considered:
+      esbuild fallback:
+        description: Use esbuild as a fallback TypeScript compiler when tsx is unavailable.
+        rationale: Rejected during implementation. tsx covers all use cases and adding a second compiler would add complexity with no practical benefit.
+    refs:
+      - file: src/loader.ts
+        identifier: importTs
+        role: implements
+      - file: src/runner.ts
+        identifier: findTsxBin
+        role: implements
+
+  - id: D3
+    name: commander for CLI framework
+    status: active
+    statement: >
+      Use commander for CLI argument parsing and subcommand routing.
+      Lightweight, well-known, handles subcommands and option parsing
+      without heavy framework overhead.
+    rationale: >
+      The design doc considered minimal process.argv parsing but noted
+      commander as an option if complexity warranted it. The 8 subcommands
+      with varied options justified a lightweight framework.
+    tags: [cli, dependencies]
+    maps_to: [project:G2, project:V1]
+    considered:
+      Manual process.argv parsing:
+        description: Parse arguments manually without a library.
+        rationale: Rejected. 8 subcommands with varied options makes this error-prone and tedious.
+    refs:
+      - file: src/cli.ts
+        identifier: program
+        role: implements
+
+  - id: D4
+    name: __name polyfill for page.evaluate compatibility
+    status: active
+    statement: >
+      Inject a no-op __name polyfill into the browser page context before
+      running user code. This works around esbuild/tsx's keepNames
+      transform which wraps functions with __name() calls that break when
+      serialized into page.evaluate().
+    rationale: >
+      tsx uses esbuild internally, which applies keepNames. When Playwright
+      serializes functions for page.evaluate(), the __name helper is not
+      available in the browser context, causing ReferenceError. The no-op
+      polyfill (fn => fn) is transparent to users.
+    tags: [compatibility, browser]
+    maps_to: [project:G3, project:V3]
+    refs:
+      - file: src/runner.ts
+        identifier: generateWrapper
+        role: implements
+
+  - id: D5
+    name: Wrapper tsconfig extending host tsconfig
+    status: active
+    statement: >
+      Generate a temporary tsconfig.json that extends the host project's
+      tsconfig with ESM-compatible overrides (module ES2022,
+      moduleResolution bundler). This prevents CJS/ESM conflicts when
+      the host project uses module commonjs.
+    rationale: >
+      Host projects often use module commonjs in their tsconfig, which
+      conflicts with the ESM imports in the generated wrapper. Extending
+      preserves all path aliases and baseUrl while overriding only the
+      module settings.
+    tags: [compatibility, runner]
+    maps_to: [project:G3, project:V3]
+    refs:
+      - file: src/runner.ts
+        identifier: executeWrapper
+        role: implements
+
+  - id: D6
+    name: CWD set to project root during script execution
+    status: active
+    statement: >
+      The tsx subprocess CWD is set to the project root (parent of
+      .playlite/) rather than the directory where playlite was invoked.
+      This ensures relative path resolution and tools like dotenv.config()
+      find the correct files.
+    rationale: >
+      Users may invoke playlite from any subdirectory. Setting CWD to
+      project root provides consistent behavior regardless of invocation
+      location, matching how most project tools behave.
+    tags: [runner, dx]
+    maps_to: [project:G2, project:V3]
+    refs:
+      - file: src/runner.ts
+        identifier: executeWrapper
+        role: implements
+
+  - id: D7
+    name: Import hoisting via pragmatic heuristic
+    status: active
+    statement: >
+      User script import statements are extracted and placed at the top
+      of the generated wrapper (outside the async IIFE) using a
+      line-scanning heuristic, not a full parser. Handles standard
+      import patterns and multi-line imports.
+    rationale: >
+      User code is inlined inside an async IIFE for top-level await
+      support, but static imports must be at module top level. A full
+      AST parser would add complexity and dependencies. The heuristic
+      handles the common patterns that debugging scripts use.
+    tags: [runner, architecture]
+    maps_to: [project:G3, project:V1]
+    considered:
+      Full AST parser:
+        description: Use a TypeScript AST parser to precisely extract imports.
+        rationale: Rejected. Adds a dependency and complexity for a use case where simple line scanning is sufficient.
+    refs:
+      - file: src/runner.ts
+        identifier: splitImports
+        role: implements
+
+  - id: D8
+    name: Dual execution modes for eval
+    status: active
+    statement: >
+      eval without --lib runs in the browser via page.evaluate() (raw
+      browser JS, like the DevTools console). eval with --lib runs in a
+      Node.js subprocess via the temp wrapper with Playwright page object
+      and lib helpers in scope. These are fundamentally different execution
+      environments.
+    rationale: >
+      Sometimes you want raw browser JS for DOM inspection or ExtJS widget
+      queries. Sometimes you want Playwright APIs and project helpers. The
+      --lib flag is a natural switch: if you need helpers, you need --lib;
+      if you don't, you're doing raw browser work.
+    tags: [cli, eval]
+    maps_to: [project:G1, project:G4, project:V1]
+    refs:
+      - file: src/commands/eval.ts
+        identifier: evalCommand
+        role: implements
+
+  - id: D9
+    name: Config libs prepended to CLI --lib flags
+    status: active
+    statement: >
+      Libs specified in .playlite/config.ts are prepended to any --lib
+      flags given on the command line. This allows projects to set standard
+      libs once in config and skip --lib on every invocation, while still
+      allowing CLI overrides.
+    rationale: >
+      Most projects have a primary lib that is used in nearly every
+      debugging session. Requiring --lib on every invocation is tedious.
+      Config libs as defaults, with CLI flags appended, gives the best
+      of both worlds.
+    tags: [config, libs]
+    maps_to: [project:G4, project:V3]
+    refs:
+      - file: src/cli.ts
+        identifier: program
+        role: implements
+
+  - id: D10
+    name: Environment variables not implemented
+    status: deferred
+    statement: >
+      The design doc specified PLAYLITE_PORT, PLAYLITE_PROFILE, and
+      PLAYLITE_CONFIG environment variables. These were not implemented.
+      Configuration is handled solely via .playlite/config.ts and CLI flags.
+    rationale: >
+      The config file and CLI flags provide sufficient configurability.
+      Environment variables would add a third configuration source with
+      precedence ambiguity. Keeping two sources (config file + CLI) is
+      simpler.
+    tags: [config]
+    maps_to: [project:G2, project:V1]
+    refs: []
+
+  - id: D11
+    name: 1-based tab indexing
+    status: active
+    statement: >
+      Tab indices displayed by playlite tabs and used by --tab are 1-based,
+      matching human expectations. The design doc originally described using
+      CDP target IDs; the implementation uses array indices instead.
+    rationale: >
+      1-based indexing matches the displayed output (tab 1 is --tab 1).
+      CDP target IDs are opaque strings that are harder for both humans
+      and AI agents to work with.
+    tags: [cli, tabs]
+    maps_to: [project:G2, project:V2]
+    considered:
+      CDP target IDs:
+        description: Use CDP target IDs as tab identifiers.
+        rationale: Rejected. Opaque strings are harder for AI agents and humans to work with than simple 1-based indices.
+    refs:
+      - file: src/browser.ts
+        identifier: selectPage
+        role: implements
+      - file: src/browser.ts
+        identifier: listTabs
+        role: implements
+
+  - id: D12
+    name: Stdin support for run command
+    status: active
+    statement: >
+      playlite run accepts input from stdin via explicit - marker or
+      auto-detection when stdin is not a TTY. This enables piping and
+      heredocs for quick one-off scripts without creating files.
+    rationale: >
+      AI agents often generate scripts dynamically. Requiring a temp
+      file for every script adds friction. Stdin support lets agents
+      pipe code directly.
+    tags: [cli, run]
+    maps_to: [project:G2, project:V1]
+    refs:
+      - file: src/commands/run.ts
+        identifier: run
+        role: implements
+
+  - id: D13
+    name: No test suite
+    status: superseded
+    statement: >
+      The project currently has no automated tests. The package.json test
+      script is a stub. Testing has been done manually against live browsers.
+    rationale: >
+      Time pressure — the project was implemented rapidly and shipped
+      without tests. This was not a deliberate design choice. Testing
+      against live browsers was the primary validation method during
+      initial development. This is a significant gap for AI-agent-driven
+      development. Superseded by D14.
+    tags: [testing, gap]
+    maps_to: [project:G2, project:V1]
+    refs:
+      - file: package.json
+        identifier: scripts
+        role: defines
+
+  - id: D14
+    name: "node:test as test framework"
+    status: active
+    statement: >
+      Use Node.js built-in test runner (node:test + node:assert) for unit
+      tests. Tests run via tsx (already a dependency) with the command
+      node --import tsx/esm --test src/**/*.test.ts. Initial coverage
+      targets pure functions in runner.ts and config.ts.
+    rationale: >
+      Zero additional dependencies — node:test is built into Node 18+
+      (satisfies C1). Aligns with V1 (simplicity over abstraction).
+      vitest was considered but rejected: it pulls a large dependency
+      tree (vite, esbuild, etc.) whose value-add (HMR, watch mode,
+      browser mode) is irrelevant for pure function unit tests. The
+      test targets are straightforward enough that describe/it/assert
+      is sufficient.
+    tags: [testing, dependencies]
+    maps_to: [project:G2, project:V1]
+    considered:
+      vitest:
+        description: Modern test runner with Vite-based HMR and browser mode.
+        rationale: >
+          Rejected. Large dependency tree adds complexity for no practical
+          benefit — test targets are pure functions, not components needing
+          HMR or browser environments.
+      jest:
+        description: Popular test framework with large ecosystem.
+        rationale: >
+          Rejected. Poor ESM support, requires additional transforms for
+          TypeScript, and the project already has tsx which handles TS
+          execution natively.
+    refs:
+      - file: package.json
+        identifier: scripts
+        role: defines
+      - file: src/runner.test.ts
+        identifier: splitImports
+        role: uses
+      - file: src/config.test.ts
+        identifier: parsePort
+        role: uses
+
+constraints:
+  - id: C1
+    name: Node.js 18+ required
+    statement: >
+      Requires Node.js 18 or later for ESM support, stable fs APIs,
+      and child_process features.
+    tags: [runtime]
+    maps_to: []
+    refs:
+      - file: package.json
+        identifier: engines
+        role: defines
+
+  - id: C2
+    name: Chromium-only via CDP
+    statement: >
+      Only works with Chromium-based browsers that expose the Chrome
+      DevTools Protocol via --remote-debugging-port. Firefox and WebKit
+      are not supported.
+    tags: [browser, scope]
+    maps_to: []
+    refs:
+      - file: src/browser.ts
+        identifier: connectToBrowser
+        role: implements
+
+  - id: C3
+    name: ESM-only package
+    statement: >
+      The package is type module in package.json. All source uses ESM
+      imports. This constrains consumers to ESM-compatible Node.js
+      environments.
+    tags: [architecture]
+    maps_to: []
+    refs:
+      - file: package.json
+        identifier: type
+        role: defines
+      - file: tsconfig.json
+        identifier: compilerOptions
+        role: defines

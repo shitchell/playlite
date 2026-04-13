@@ -52,7 +52,7 @@ export interface RunnerOptions {
  * are not expected to have exports, and hoisting them outside the IIFE would
  * break their scope references.
  */
-function splitImports(source: string): { imports: string; body: string } {
+export function splitImports(source: string): { imports: string; body: string } {
   const lines = source.split('\n');
   const importLines: string[] = [];
   const bodyLines: string[] = [];
@@ -94,7 +94,7 @@ function splitImports(source: string): { imports: string; body: string } {
  * Generate the page selection code snippet for the wrapper.
  * Inlined to avoid importing playlite modules into the subprocess.
  */
-function generatePageSelection(tab?: string): string {
+export function generatePageSelection(tab?: string): string {
   if (tab !== undefined) {
     const asNumber = Number(tab);
     if (!isNaN(asNumber) && Number.isInteger(asNumber)) {
@@ -130,7 +130,7 @@ function generatePageSelection(tab?: string): string {
  * Generate lib-loading code that calls each lib factory and merges exports
  * onto globalThis so the user's code can reference them as bare identifiers.
  */
-function generateLibLoading(libs: string[], playliteDir: string | null): string {
+export function generateLibLoading(libs: string[], playliteDir: string | null): string {
   if (libs.length === 0) return '';
 
   if (!playliteDir) {
@@ -166,7 +166,7 @@ function generateLibLoading(libs: string[], playliteDir: string | null): string 
 /**
  * Generate the complete wrapper source code.
  */
-function generateWrapper(options: RunnerOptions, playliteDir: string | null): string {
+export function generateWrapper(options: RunnerOptions, playliteDir: string | null): string {
   const { port, tab, libs, code, isFile } = options;
 
   // Get the user's source code
