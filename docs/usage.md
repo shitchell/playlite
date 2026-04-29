@@ -115,6 +115,24 @@ playlite connect 9223
 
 The port can also be given as a positional argument: `playlite connect 9222`. If both positional and `--port` are given, the positional argument wins.
 
+**Polling pattern:**
+
+`connect` is the right building block for waiting on a browser that is starting up. Use the **exit code** (`$?`), not the stdout text -- the success message format is informational and may change, and the failure message can contain the port number, which trivially defeats `grep`-based checks.
+
+```bash
+# Correct: poll the exit code
+until playlite connect >/dev/null 2>&1; do sleep 2; done
+echo "Browser is up"
+```
+
+```bash
+# Wrong: grepping stdout
+until playlite connect 2>&1 | grep -q 'Connected\|9223'; do sleep 2; done
+# ^^^ This was a real consumer poll. It short-circuited on failure
+#     because the failure message ("...port 9223...") contains "9223",
+#     so grep matched and the loop exited before the browser was up.
+```
+
 **Exit codes:**
 
 - `0` -- connected successfully

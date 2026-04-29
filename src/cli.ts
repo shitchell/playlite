@@ -47,7 +47,11 @@ program
 // ----------------------------------------------------------------------------
 program
   .command('connect [port]')
-  .description('Test connectivity to a running browser')
+  .description(
+    'Test connectivity to a running browser. Exit code 0 = connected, ' +
+    'non-zero = not connected. Use the exit code (not stdout text) ' +
+    'when scripting a poll loop.'
+  )
   .option('--port <n>', 'CDP port', defaultPort)
   .action(async (portArg, options) => {
     // The optional positional arg is a convenience alias for --port.

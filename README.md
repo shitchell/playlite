@@ -59,7 +59,7 @@ echo "console.log(await page.title())" | playlite run -
 | Command | Description |
 |---------|-------------|
 | `playlite launch` | Launch a Chromium browser with CDP enabled |
-| `playlite connect [port]` | Test connectivity to a running browser |
+| `playlite connect [port]` | Test connectivity to a running browser (use exit code, not stdout, for poll loops -- see [docs/usage.md#connect](docs/usage.md#connect)) |
 | `playlite tabs` | List open tabs |
 | `playlite url` | Print current page URL |
 | `playlite navigate <url>` | Navigate to a URL |

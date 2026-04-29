@@ -668,6 +668,56 @@ decisions:
         identifier: loadConfig
         role: implements
 
+  - id: D17
+    name: Connect uses exit code, not stdout, as the success signal
+    status: active
+    statement: >
+      playlite connect returns exit 0 iff a CDP connection succeeds.
+      Stdout content is informational only; scripts (including AI-agent
+      poll loops) must use the exit code ($?), not parse stdout, for
+      control flow. The success message format may change without notice.
+    rationale: >
+      Codifies existing behavior so future-us can't accidentally break
+      it. Real consumer sessions have written grep-based polls that
+      short-circuit because failure messages contain the port number
+      (e.g., grep -q 'Connected\|9223' matches on the failure path);
+      the only stable signal is the exit code. Maps to V4 (predictable
+      output — status belongs on stderr, not stdout), G2 (AI-agent-first;
+      agents need a contract they can rely on without reading source),
+      and V2 (actionable contract — the documented signal is the one
+      that actually works).
+    tags: [cli, output, ai-agents]
+    maps_to: [project:V2, project:V4, project:G2]
+    considered:
+      Stable success-message contract on stdout:
+        description: >
+          Promise that the success line ("Connected to browser on port N
+          (M tabs)") is parseable and stable, so consumers can grep it.
+        rationale: >
+          Rejected. Contradicts V4 — status messages belong on stderr,
+          not stdout, and locking the message format restricts future
+          UX changes (e.g., adding tab summaries). The exit code is the
+          right signal; stdout is for machine-readable data, not status.
+      Add --quiet flag:
+        description: >
+          Add an opt-in --quiet flag that suppresses stdout/stderr so
+          poll loops don't have to redirect manually.
+        rationale: >
+          Deferred to a separate ticket (per #004 Out of Scope). The
+          existing >/dev/null 2>&1 idiom is universally understood and
+          adds no CLI surface; a flag is only worth adding if a real
+          consumer asks.
+    refs:
+      - file: src/commands/connect.ts
+        identifier: connect
+        role: implements
+      - file: docs/usage.md
+        identifier: Polling pattern
+        role: defines
+      - file: README.md
+        identifier: connect
+        role: defines
+
 constraints:
   - id: C1
     name: Node.js 18+ required
