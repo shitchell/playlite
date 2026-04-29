@@ -1,13 +1,14 @@
 import { connectToBrowser, listTabs } from '../browser.js';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 
 export interface TabsOptions {
   port: string;
+  session?: string;
   json: boolean;
 }
 
 export async function tabs(options: TabsOptions): Promise<void> {
-  const port = parsePort(options.port);
+  const port = resolvePort(options);
   const { browser, context } = await connectToBrowser(port);
 
   try {

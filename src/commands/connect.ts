@@ -1,12 +1,13 @@
 import { connectToBrowser } from '../browser.js';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 
 export interface ConnectOptions {
   port: string;
+  session?: string;
 }
 
 export async function connect(options: ConnectOptions): Promise<void> {
-  const port = parsePort(options.port);
+  const port = resolvePort(options);
 
   const { browser, context } = await connectToBrowser(port);
 
