@@ -10,6 +10,7 @@ import { navigate } from './commands/navigate.js';
 import { evalCommand } from './commands/eval.js';
 import { run } from './commands/run.js';
 import { launch } from './commands/launch.js';
+import { tree } from './commands/tree.js';
 import { loadConfig } from './config.js';
 
 const require = createRequire(import.meta.url);
@@ -143,6 +144,26 @@ program
   .option('--url <url>', 'Navigate to URL after launch')
   .action(async (options) => {
     await launch(options);
+  });
+
+// ----------------------------------------------------------------------------
+// tree [selector] — hierarchical DOM dump (issue #8 slice 1)
+// ----------------------------------------------------------------------------
+program
+  .command('tree [selector]')
+  .description(
+    'Print a compact hierarchical view of the page DOM (or a subtree). ' +
+    'Optimized for LLM consumption: empty wrappers collapsed, generated ' +
+    'classes filtered, redundant roles suppressed.'
+  )
+  .option('--port <n>', 'CDP port', defaultPort)
+  .option('--tab <filter>', 'Tab title substring or numeric ID')
+  .option('--depth <n>', 'Maximum tree depth', '6')
+  .option('--show-classes <mode>', 'Class filter aggressiveness: none|stable|all', 'stable')
+  .option('--no-collapse', 'Disable empty-wrapper collapse')
+  .option('--max-text <n>', 'Truncate visible text to N chars', '60')
+  .action(async (selector, options) => {
+    await tree(selector, options);
   });
 
 // ----------------------------------------------------------------------------
