@@ -754,6 +754,64 @@ decisions:
         identifier: connect
         role: defines
 
+  - id: D18
+    name: "Accept -e/--expression and -c/--code as aliases for positional eval code"
+    status: active
+    statement: >
+      playlite eval accepts code via the positional argument (canonical),
+      or via -e/--expression or -c/--code. Exactly one form must be used
+      per invocation; passing more than one is an error. The positional
+      remains canonical for documentation and backward compatibility with
+      D8/D12.
+    rationale: >
+      AI agents and humans coming from node -e, python -c, etc. reach for
+      these flags first. Adding aliases collapses friction without
+      removing the positional. Maps to V2 (actionable errors), G2
+      (AI-agent-first), V1 (still small).
+    tags: [cli, eval, ai-agents]
+    maps_to: [project:V2, project:G2, project:V1]
+    considered:
+      Error hint only (no aliases):
+        description: >
+          Customize the unknown-option error to hint that code is
+          positional, without adding -e/-c flags.
+        rationale: >
+          Rejected. Keeps friction — the user still has to retype the
+          command using the positional form. Pays the cost of an error
+          path without solving the actual problem.
+      "-e only (drop -c)":
+        description: >
+          Add only -e/--expression, omit -c/--code.
+        rationale: >
+          Rejected. Both are common upstream conventions (-e matches
+          node -e, -c matches python -c); the marginal cost is one
+          option line, and either feels native depending on the user's
+          background.
+      Replace positional with required -e:
+        description: >
+          Remove the positional argument and require -e/--expression.
+        rationale: >
+          Rejected. Breaks every existing caller and contradicts D8's
+          surface stability.
+      Symmetric treatment for run:
+        description: >
+          Mirror the -e/-c aliases on the run command for symmetry.
+        rationale: >
+          Rejected. D12 (stdin support) already provides the equivalent
+          ergonomic for run. Adding flags to run would create a third
+          way to pass code without ergonomic gain and risks confusion
+          about when stdin vs flag wins.
+    refs:
+      - file: src/cli.ts
+        identifier: program
+        role: implements
+      - file: src/commands/eval.ts
+        identifier: evalCommand
+        role: implements
+      - file: docs/usage.md
+        identifier: eval
+        role: defines
+
 constraints:
   - id: C1
     name: Node.js 18+ required

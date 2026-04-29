@@ -276,8 +276,12 @@ playlite eval --lib myapp "console.log(await page.locator('h1').textContent())"
 
 **Options:**
 
+Code may be passed as the positional argument (canonical), or via `-e/--expression` or `-c/--code`. Exactly one form per invocation.
+
 | Option | Description | Default |
 |--------|-------------|---------|
+| `-e, --expression <code>` | Code to evaluate (alias for positional) | |
+| `-c, --code <code>` | Code to evaluate (alias for positional) | |
 | `--port <n>` | CDP port | `9222` |
 | `--tab <filter>` | Tab title substring or numeric index | |
 | `--lib <name>` | Load lib(s) into scope (repeatable) | |
@@ -292,6 +296,17 @@ playlite eval --lib myapp "console.log(await page.locator('h1').textContent())"
 - Numbers and booleans print as-is
 - Objects and arrays print as JSON
 - `--json` forces JSON output for all types
+
+**Common gotchas:**
+
+`eval` runs `<code>` as the body of `page.evaluate(<string>)`. The **last expression's value** is returned. Function literals are not auto-invoked.
+
+- ❌ `playlite eval '() => document.title'` — logs the function source verbatim; the arrow is never called.
+- ✅ `playlite eval 'document.title'` — bare expression; returns the string.
+- ✅ `playlite eval '(() => document.title)()'` — IIFE; returns the string.
+- ✅ `playlite eval '(() => { const t = document.title; return t.toUpperCase() })()'` — IIFE with block body; an explicit `return` is required inside `{ ... }`.
+
+The same rules apply with `--lib` (Node context), but `await` works at the top level there because the Node wrapper uses an async IIFE.
 
 **Key distinction:** Without `--lib`, the code string is sent to the browser and executed there (like `cdp eval`). With `--lib`, a full Node.js subprocess is spawned that connects to the browser via Playwright and runs your code with helpers in scope. This is a fundamentally different execution model. If you want raw browser JS, omit `--lib`. If you want Playwright APIs and your helpers, use `--lib`.
 

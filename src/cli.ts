@@ -104,17 +104,31 @@ program
 // eval "<js>" — evaluate JS in page context (or Node context with --lib)
 // ----------------------------------------------------------------------------
 program
-  .command('eval <code>')
+  .command('eval [code]')
   .description(
-    'Evaluate JavaScript. Without --lib: runs in browser context (page.evaluate). ' +
-    'With --lib: runs in Node context with lib helpers in scope.'
+    'Evaluate JavaScript. Code is the value of the last expression. ' +
+    'Without --lib: page.evaluate(code) in the browser. ' +
+    'With --lib: Node.js subprocess with page + lib helpers in scope. ' +
+    'Function literals are NOT auto-called; wrap in an IIFE.'
   )
+  .option('-e, --expression <code>', 'Code to evaluate (alias for positional)')
+  .option('-c, --code <code>', 'Code to evaluate (alias for positional)')
   .option('--port <n>', 'CDP port', defaultPort)
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .option('--json', 'Force JSON output', false)
   .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
   .action(async (code, options) => {
+    const provided = [code, options.expression, options.code].filter(Boolean);
+    if (provided.length === 0) {
+      console.error('No code provided. Use a positional, -e/--expression, or -c/--code.');
+      process.exit(1);
+    }
+    if (provided.length > 1) {
+      console.error('Pass code via positional, -e/--expression, OR -c/--code — not multiple.');
+      process.exit(1);
+    }
+    code = provided[0]!;
     options.json = options.json || options.format === 'json';
     // Merge config libs (first) with CLI --lib flags (appended/override).
     options.lib = [...configLibs, ...options.lib];
