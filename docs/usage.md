@@ -25,6 +25,7 @@ Complete reference for every command, option, and feature. For a quick overview,
   - [Path Aliases in Libs](#path-aliases-in-libs)
   - [Example Lib](#example-lib)
 - [Configuration](#configuration)
+  - [Writing `.playlite/config.ts`](#writing-playliteconfigts)
 - [Integration with Playwright Tests](#integration-with-playwright-tests)
 - [Technical Notes](#technical-notes)
 - [Error Reference](#error-reference)
@@ -516,6 +517,39 @@ export default {
 **`libs` field:** Config libs are prepended to any `--lib` flags given on the command line. This lets projects skip `--lib` entirely for their standard helper(s). If the same lib name appears in both config and CLI flags, it is loaded once (CLI flag order preserved after config libs).
 
 **Fallback behavior:** If no config file exists, all defaults remain hardcoded (port 9222, headed mode, no profile).
+
+### Writing `.playlite/config.ts`
+
+`.playlite/config.ts` is loaded in playlite's process via `tsImport` and runs at startup for **every** command. **Code in this file (and anything it imports) must not write to stdout** -- playlite reserves stdout for machine-readable output (see [Output Conventions](#output-conventions); aligns with V4: Predictable output conventions). Status, warnings, and other human-readable text belong on stderr.
+
+The canonical pitfall is `dotenv`. Calling `dotenv.config()` without `{ quiet: true }` prints a `[dotenv@<version>] injecting env (N) from .env -- tip: ...` line to stdout, which then leaks into the output of every playlite command (e.g. `playlite tabs --json` would emit dotenv lines mixed with JSON, breaking machine consumers).
+
+```typescript
+// .playlite/config.ts -- correct
+
+// Preload form (silent by default in dotenv 17.3.1+):
+import 'dotenv/config';
+
+// OR programmatic form (must pass { quiet: true }):
+import dotenv from 'dotenv';
+dotenv.config({ quiet: true });
+
+export default { libs: ['myapp'] };
+```
+
+```typescript
+// .playlite/config.ts -- incorrect: pollutes every command's stdout
+import dotenv from 'dotenv';
+dotenv.config(); // prints "[dotenv@17.x] injecting env ..." to stdout
+
+export default { libs: ['myapp'] };
+```
+
+The same rule applies to **any** dependency that prints to stdout on import or initialization. If you need diagnostic output during config load, write it to `process.stderr` (or `console.error`) instead.
+
+Why playlite does not silence this for you: config files are CLI input, not output sources. Playlite does not patch user dependencies or intercept their stdout — that would set a hostile precedent against simplicity (V1) and host-project compatibility (V3, where the user owns their config). The contract is documented here so the runtime stays predictable.
+
+This is the root cause of the noise reported in [shitchell/playlite#6](https://github.com/shitchell/playlite/issues/6) -- playlite itself has zero `dotenv` invocations and `dotenv` is not a (direct or transitive) dependency; the output originates in the user's config.
 
 ---
 

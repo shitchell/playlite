@@ -109,6 +109,8 @@ export default {
 
 Config libs are prepended to any `--lib` flags given on the command line.
 
+Config code runs in playlite's process; do not write to stdout. See [docs/usage.md#writing-playliteconfigts](docs/usage.md#writing-playliteconfigts).
+
 See [docs/usage.md#lib-system](docs/usage.md#lib-system) for the full lib authoring guide.
 
 ---

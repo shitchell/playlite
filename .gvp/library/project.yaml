@@ -618,6 +618,56 @@ decisions:
         identifier: config-unit-tests
         role: implements
 
+  - id: D15
+    name: Config files are CLI input, not output sources
+    status: active
+    statement: >
+      .playlite/config.ts is loaded in playlite's process via tsImport
+      and runs at startup for every command. Code in this file (and
+      anything it imports) must not write to stdout; playlite reserves
+      stdout for machine-readable output. The contract applies to
+      imports as well — if a config loads dotenv or any library that
+      prints on init, the user must suppress its output (e.g.,
+      dotenv.config({ quiet: true })).
+    rationale: >
+      Playlite does not patch user dependencies or intercept their
+      stdout — doing so would set a hostile precedent against V1
+      (simplicity) and V3 (host project compatibility, where the user
+      owns their config). Documenting the contract on the user side
+      keeps runtime behavior predictable and protects V4
+      (machine-readable stdout) for AI agents (G2) consuming command
+      output.
+    tags: [config, output]
+    maps_to: [project:V1, project:V3, project:V4, project:G2]
+    considered:
+      Monkey-patch dotenv before user config loads:
+        description: Wrap or replace dotenv.config inside playlite so user calls become silent automatically.
+        rationale: >
+          Rejected. Invasive — modifies a third-party library in the
+          user's process. Sets a precedent against V1 simplicity and
+          would accumulate over time as new noisy libraries appear.
+      Suppress stdout during config import:
+        description: Redirect process stdout while loading .playlite/config.ts so any prints are swallowed.
+        rationale: >
+          Rejected. Magic behavior — users would rely on it without
+          realizing. Brittle if a config legitimately produces output,
+          and harder to debug when expected output disappears.
+      Subprocess-isolate config loading:
+        description: Load .playlite/config.ts in a child process and read back the resolved config over IPC.
+        rationale: >
+          Rejected. Architectural overkill for a contract that
+          documents cleanly. Costs debuggability and startup time.
+    refs:
+      - file: docs/usage.md
+        identifier: Writing .playlite/config.ts
+        role: defines
+      - file: src/loader.ts
+        identifier: importTs
+        role: implements
+      - file: src/config.ts
+        identifier: loadConfig
+        role: implements
+
 constraints:
   - id: C1
     name: Node.js 18+ required
