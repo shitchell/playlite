@@ -11,11 +11,12 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 import { executeWrapper } from '../runner.js';
 
 export interface RunOptions {
   port: string;
+  session?: string;
   tab?: string;
   lib?: string[];
 }
@@ -29,7 +30,7 @@ function readStdin(): string {
 }
 
 export async function run(script: string | undefined, options: RunOptions): Promise<void> {
-  const port = parsePort(options.port);
+  const port = resolvePort(options);
 
   // Determine whether we're reading from stdin or a file.
   const useStdin = script === '-' || (script === undefined && !process.stdin.isTTY);

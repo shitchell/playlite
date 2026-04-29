@@ -1,13 +1,14 @@
 import { connectToBrowser, selectPage } from '../browser.js';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 
 export interface NavigateOptions {
   port: string;
+  session?: string;
   tab?: string;
 }
 
 export async function navigate(url: string, options: NavigateOptions): Promise<void> {
-  const port = parsePort(options.port);
+  const port = resolvePort(options);
   const { browser, context } = await connectToBrowser(port);
 
   try {

@@ -8,6 +8,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { importTs } from './loader.js';
+import { findSession } from './sessions.js';
 
 export interface PlayliteConfig {
   /** Default CDP port (default: 9222) */
@@ -84,6 +85,40 @@ export function parsePort(portStr: string): number {
     throw new Error(`Invalid port: "${portStr}"`);
   }
   return port;
+}
+
+/**
+ * Resolve a port from `--port` and/or `--session` options.
+ *
+ * Precedence:
+ *   1. `--session` (named session lookup) — highest
+ *   2. `--port` (explicit port)
+ *
+ * If both are given, `--session` wins and a warning is printed to
+ * stderr. If `--session` is given but the named session isn't
+ * registered (or its process is dead), throws an actionable error.
+ */
+export function resolvePort(opts: { port?: string; session?: string }): number {
+  if (opts.session) {
+    if (opts.port !== undefined && opts.port !== '') {
+      console.error(
+        `Warning: both --session "${opts.session}" and --port "${opts.port}" given. ` +
+        `Using --session.`
+      );
+    }
+    const meta = findSession(opts.session);
+    if (!meta) {
+      throw new Error(
+        `Session "${opts.session}" is not registered (or its browser is no longer running). ` +
+        `Launch it with: playlite launch --name ${opts.session}`
+      );
+    }
+    return meta.port;
+  }
+  if (opts.port === undefined || opts.port === '') {
+    throw new Error('Either --port or --session is required.');
+  }
+  return parsePort(opts.port);
 }
 
 /**

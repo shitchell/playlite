@@ -1,14 +1,15 @@
 import { connectToBrowser, selectPage } from '../browser.js';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 
 export interface ScreenshotOptions {
   port: string;
+  session?: string;
   tab?: string;
   full: boolean;
 }
 
 export async function screenshot(path: string | undefined, options: ScreenshotOptions): Promise<void> {
-  const port = parsePort(options.port);
+  const port = resolvePort(options);
   const { browser, context } = await connectToBrowser(port);
 
   try {
