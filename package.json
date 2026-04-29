@@ -8,6 +8,7 @@
     "playlite": "dist/cli.js"
   },
   "scripts": {
+    "prebuild": "rm -rf dist",
     "build": "tsc",
     "test": "node --import tsx/esm --test src/**/*.test.ts"
   },
