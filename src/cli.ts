@@ -13,6 +13,7 @@ import { launch } from './commands/launch.js';
 import { ls } from './commands/ls.js';
 import { kill } from './commands/kill.js';
 import { tree } from './commands/tree.js';
+import { observe } from './commands/observe.js';
 import { loadConfig } from './config.js';
 
 const require = createRequire(import.meta.url);
@@ -228,6 +229,26 @@ program
   .action(async (selector, options, cmd) => {
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await tree(selector, options);
+  });
+
+// ----------------------------------------------------------------------------
+// observe — stream MutationObserver events from the connected page
+// ----------------------------------------------------------------------------
+program
+  .command('observe')
+  .description('Stream DOM mutations from the connected page in real time. Press Ctrl+C to stop.')
+  .option('--port <n>', 'CDP port', defaultPort)
+  .option('--tab <filter>', 'Tab title substring or numeric ID')
+  .option('--root <selector>', 'Observe only this subtree (default: whole document)')
+  .option('--no-childList', 'Disable childList mutations')
+  .option('--no-attributes', 'Disable attribute mutations')
+  .option('--no-characterData', 'Disable text-content mutations')
+  .option('--no-subtree', 'Observe only the root node, not its descendants')
+  .option('--attribute-filter <name...>', 'Restrict attribute mutations to these names')
+  .option('--duration <ms>', 'Auto-stop after this many milliseconds')
+  .option('--json', 'Emit raw JSON records (the on-bridge shape)', false)
+  .action(async (options) => {
+    await observe(options);
   });
 
 // ----------------------------------------------------------------------------
