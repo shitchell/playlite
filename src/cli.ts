@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createRequire } from 'node:module';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { tabs } from './commands/tabs.js';
 import { connect } from './commands/connect.js';
 import { url } from './commands/url.js';
@@ -38,7 +38,9 @@ program
   .description('List open tabs in the connected browser')
   .option('--port <n>', 'CDP port', defaultPort)
   .option('--json', 'JSON output', false)
+  .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
   .action(async (options) => {
+    options.json = options.json || options.format === 'json';
     await tabs(options);
   });
 
@@ -111,7 +113,9 @@ program
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .option('--json', 'Force JSON output', false)
+  .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
   .action(async (code, options) => {
+    options.json = options.json || options.format === 'json';
     // Merge config libs (first) with CLI --lib flags (appended/override).
     options.lib = [...configLibs, ...options.lib];
     await evalCommand(code, options);

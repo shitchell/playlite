@@ -668,6 +668,42 @@ decisions:
         identifier: loadConfig
         role: implements
 
+  - id: D16
+    name: "Accept --format json as alias for --json"
+    status: active
+    statement: >
+      Commands that produce JSON output (eval, tabs) accept --format <fmt>
+      as well as --json. The --format flag is restricted to value json via
+      Option.choices. The two surfaces are equivalent; --json remains the
+      canonical short form.
+    rationale: >
+      Aligns CLI ergonomics with gh, kubectl, az, jq conventions that AI
+      agents and humans default to. V2 + G2.
+    tags: [cli, eval, tabs]
+    maps_to: [project:V2, project:G2, project:V4]
+    considered:
+      Customize unknown-option error to hint:
+        description: >
+          Use program.exitOverride() to intercept and emit a hint when
+          the unknown option is --format.
+        rationale: >
+          Rejected. Less discoverable, more code, doesn't surface in --help.
+      Reject --format outright:
+        description: >
+          Keep the current behavior where --format is rejected as unknown.
+        rationale: >
+          Rejected. Perpetuates the friction reported in issue #2.
+    refs:
+      - file: src/cli.ts
+        identifier: program
+        role: implements
+      - file: docs/usage.md
+        identifier: eval
+        role: defines
+      - file: docs/usage.md
+        identifier: tabs
+        role: defines
+
   - id: D17
     name: Connect uses exit code, not stdout, as the success signal
     status: active

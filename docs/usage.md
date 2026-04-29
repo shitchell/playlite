@@ -162,6 +162,9 @@ playlite tabs --json
 |--------|-------------|---------|
 | `--port <n>` | CDP port | `9222` |
 | `--json` | JSON output | `false` |
+| `--format <fmt>` | Output format (alias for `--json`): `json` | |
+
+`--format json` is accepted as an alias for `--json` (same effect).
 
 The tab index shown here is the same 1-based index used by `--tab` on other commands.
 
@@ -279,6 +282,9 @@ playlite eval --lib myapp "console.log(await page.locator('h1').textContent())"
 | `--tab <filter>` | Tab title substring or numeric index | |
 | `--lib <name>` | Load lib(s) into scope (repeatable) | |
 | `--json` | Force JSON output for the result | `false` |
+| `--format <fmt>` | Output format (alias for `--json`): `json` | |
+
+`--format json` is accepted as an alias for `--json` (same effect).
 
 **Output formatting:**
 
