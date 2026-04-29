@@ -10,6 +10,8 @@ import { navigate } from './commands/navigate.js';
 import { evalCommand } from './commands/eval.js';
 import { run } from './commands/run.js';
 import { launch } from './commands/launch.js';
+import { ls } from './commands/ls.js';
+import { kill } from './commands/kill.js';
 import { loadConfig } from './config.js';
 
 const require = createRequire(import.meta.url);
@@ -37,6 +39,7 @@ program
   .command('tabs')
   .description('List open tabs in the connected browser')
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--json', 'JSON output', false)
   .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
   .action(async (options) => {
@@ -55,12 +58,13 @@ program
     'when scripting a poll loop.'
   )
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .action(async (portArg, options) => {
     // The optional positional arg is a convenience alias for --port.
     // Positional wins if given; falls back to --port (or its default).
     // If only positional is given, use it.
     const effectivePort: string = portArg ?? options.port;
-    await connect({ port: effectivePort });
+    await connect({ port: effectivePort, session: options.session });
   });
 
 // ----------------------------------------------------------------------------
@@ -70,6 +74,7 @@ program
   .command('url')
   .description("Print the current page's URL")
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (options) => {
     await url(options);
@@ -82,6 +87,7 @@ program
   .command('screenshot [path]')
   .description('Capture the current page as a PNG')
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--full', 'Full page screenshot (not just viewport)', false)
   .action(async (path, options) => {
@@ -95,6 +101,7 @@ program
   .command('navigate <url>')
   .description('Navigate the current page to a URL')
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (targetUrl, options) => {
     await navigate(targetUrl, options);
@@ -114,6 +121,7 @@ program
   .option('-e, --expression <code>', 'Code to evaluate (alias for positional)')
   .option('-c, --code <code>', 'Code to evaluate (alias for positional)')
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .option('--json', 'Force JSON output', false)
@@ -145,6 +153,7 @@ program
     'Pass - or omit the script argument to read from stdin.'
   )
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .action(async (script, options) => {
@@ -160,11 +169,34 @@ program
   .command('launch')
   .description('Launch a new Chromium browser with remote debugging enabled')
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--name <label>', 'Register as a named session for later --session lookup')
   .option('--profile <path>', 'Browser profile directory')
   .option('--headless', 'Launch headless (default: headed)', false)
   .option('--url <url>', 'Navigate to URL after launch')
   .action(async (options) => {
     await launch(options);
+  });
+
+// ----------------------------------------------------------------------------
+// ls — list active named sessions
+// ----------------------------------------------------------------------------
+program
+  .command('ls')
+  .description('List active named sessions')
+  .option('--json', 'JSON output', false)
+  .action(async (options) => {
+    await ls(options);
+  });
+
+// ----------------------------------------------------------------------------
+// kill <name> — terminate a named session
+// ----------------------------------------------------------------------------
+program
+  .command('kill <name>')
+  .description('Terminate a named session and prune its registry entry')
+  .option('-9, --force', 'Send SIGKILL instead of SIGTERM', false)
+  .action(async (name, options) => {
+    await kill(name, options);
   });
 
 // ----------------------------------------------------------------------------

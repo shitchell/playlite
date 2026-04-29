@@ -6,18 +6,19 @@
  */
 
 import { connectToBrowser, selectPage } from '../browser.js';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 import { executeWrapper } from '../runner.js';
 
 export interface EvalOptions {
   port: string;
+  session?: string;
   tab?: string;
   lib?: string[];
   json: boolean;
 }
 
 export async function evalCommand(code: string, options: EvalOptions): Promise<void> {
-  const port = parsePort(options.port);
+  const port = resolvePort(options);
 
   // With --lib: Node-context execution with lib helpers available
   if (options.lib?.length) {
