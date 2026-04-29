@@ -12,6 +12,8 @@ import { run } from './commands/run.js';
 import { launch } from './commands/launch.js';
 import { ls } from './commands/ls.js';
 import { kill } from './commands/kill.js';
+import { history } from './commands/history.js';
+import { withHistory } from './history.js';
 import { loadConfig } from './config.js';
 
 const require = createRequire(import.meta.url);
@@ -42,7 +44,7 @@ program
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--json', 'JSON output', false)
   .action(async (options) => {
-    await tabs(options);
+    await withHistory('tabs', [], options, () => tabs(options));
   });
 
 // ----------------------------------------------------------------------------
@@ -58,7 +60,8 @@ program
     // Positional wins if given; falls back to --port (or its default).
     // If only positional is given, use it.
     const effectivePort: string = portArg ?? options.port;
-    await connect({ port: effectivePort, session: options.session });
+    const merged = { port: effectivePort, session: options.session };
+    await withHistory('connect', portArg ? [portArg] : [], merged, () => connect(merged));
   });
 
 // ----------------------------------------------------------------------------
@@ -71,7 +74,7 @@ program
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (options) => {
-    await url(options);
+    await withHistory('url', [], options, () => url(options));
   });
 
 // ----------------------------------------------------------------------------
@@ -85,7 +88,7 @@ program
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--full', 'Full page screenshot (not just viewport)', false)
   .action(async (path, options) => {
-    await screenshot(path, options);
+    await withHistory('screenshot', path ? [path] : [], options, () => screenshot(path, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -98,7 +101,7 @@ program
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (targetUrl, options) => {
-    await navigate(targetUrl, options);
+    await withHistory('navigate', [targetUrl], options, () => navigate(targetUrl, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -118,7 +121,7 @@ program
   .action(async (code, options) => {
     // Merge config libs (first) with CLI --lib flags (appended/override).
     options.lib = [...configLibs, ...options.lib];
-    await evalCommand(code, options);
+    await withHistory('eval', [code], options, () => evalCommand(code, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -137,7 +140,7 @@ program
   .action(async (script, options) => {
     // Merge config libs (first) with CLI --lib flags (appended/override).
     options.lib = [...configLibs, ...options.lib];
-    await run(script, options);
+    await withHistory('run', script !== undefined ? [script] : [], options, () => run(script, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -175,6 +178,19 @@ program
   .option('-9, --force', 'Send SIGKILL instead of SIGTERM', false)
   .action(async (name, options) => {
     await kill(name, options);
+  });
+
+// ----------------------------------------------------------------------------
+// history <name> — dump per-session command history
+// ----------------------------------------------------------------------------
+program
+  .command('history <name>')
+  .description('Dump the recorded command history for a named session')
+  .option('--json', 'Output raw JSONL (the on-disk format)', false)
+  .option('-n, --n <count>', 'Tail-style: print only the last N entries')
+  .option('--clear', 'Truncate the history file', false)
+  .action(async (name, options) => {
+    await history(name, options);
   });
 
 // ----------------------------------------------------------------------------
