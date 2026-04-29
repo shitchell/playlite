@@ -310,6 +310,8 @@ The same rules apply with `--lib` (Node context), but `await` works at the top l
 
 **Key distinction:** Without `--lib`, the code string is sent to the browser and executed there (like `cdp eval`). With `--lib`, a full Node.js subprocess is spawned that connects to the browser via Playwright and runs your code with helpers in scope. This is a fundamentally different execution model. If you want raw browser JS, omit `--lib`. If you want Playwright APIs and your helpers, use `--lib`.
 
+**Config libs do not auto-apply to `eval`.** Libs declared in [`.playlite/config.ts#libs`](#playliteconfigts) are **not** merged into `eval` invocations. To use them, pass `--lib <name>` explicitly. (For `run`, config libs are still applied automatically — see the [Configuration](#configuration) section below.) This keeps `eval`'s browser-vs-Node dispatch driven solely by explicit `--lib` flags, so `playlite eval 'document.title'` always runs in the browser regardless of project configuration.
+
 ---
 
 ### `run`
@@ -553,7 +555,9 @@ export default {
 };
 ```
 
-**`libs` field:** Config libs are prepended to any `--lib` flags given on the command line. This lets projects skip `--lib` entirely for their standard helper(s). If the same lib name appears in both config and CLI flags, it is loaded once (CLI flag order preserved after config libs).
+**`libs` field:** Config libs are prepended to any `--lib` flags given on the command line for `run` only. This lets projects skip `--lib` entirely for their standard helper(s). If the same lib name appears in both config and CLI flags, it is loaded once (CLI flag order preserved after config libs).
+
+**Applies to `run` only, not `eval`.** Config libs are auto-merged for `playlite run`, but they are **not** auto-merged for `playlite eval`. This is intentional: `eval` dispatches to browser vs. Node context based on whether `--lib` was passed (see [`eval`](#eval)), so silently injecting config libs would route every `eval` to Node context and break raw-browser-JS use cases. To use a config-declared lib with `eval`, pass `--lib <name>` explicitly.
 
 **Fallback behavior:** If no config file exists, all defaults remain hardcoded (port 9222, headed mode, no profile).
 

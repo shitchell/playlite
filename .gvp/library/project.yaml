@@ -812,6 +812,64 @@ decisions:
         identifier: eval
         role: defines
 
+  - id: D19
+    name: "Config libs auto-apply to `run`, not to `eval`"
+    status: active
+    statement: >
+      Config libs declared via .playlite/config.ts#libs auto-apply to run
+      (which is always Node context) but do not auto-apply to eval. Eval's
+      context (browser vs Node) is determined solely by whether the user
+      passed an explicit --lib flag, per D8.
+    rationale: >
+      Restores D8's natural switch ("if you need helpers, pass --lib").
+      Resolves the D8/D9 interaction that silently routed
+      `playlite eval 'document.title'` to Node context in any project with
+      config libs, producing a misleading `document is not defined` error.
+      Preserves D9's ergonomic for the use case D9 actually targets (run).
+      The legacy auto-apply-on-eval was unintended — D8 and D9 were each
+      correct in isolation; the interaction was the bug.
+    tags: [cli, eval, config, libs]
+    maps_to: [project:V1, project:V2, project:G2]
+    considered:
+      Document only:
+        description: >
+          Document the interaction without changing behavior; clarify in
+          --help that config libs trigger Node context.
+        rationale: >
+          Rejected. Leaves D8's contract contradicted; users still hit
+          the surprise.
+      Visible signal / --no-config-libs flag:
+        description: >
+          Print a stderr line when config libs are active, or add a
+          --no-config-libs flag for per-invocation opt-out.
+        rationale: >
+          Rejected. Patches the symptom, not the cause; adds CLI
+          surface; doesn't help agents that didn't see the warning.
+      Migration warning + evalAutoApplyLibs opt-in:
+        description: >
+          Print a deprecation warning and add an opt-in config flag to
+          preserve the legacy auto-apply-on-eval behavior during a
+          migration window.
+        rationale: >
+          Rejected. YAGNI for a package shipped 2 weeks ago whose only
+          known affected consumer (Trinoor TAStest team / gh#5 filer)
+          reported the current behavior as broken. Legacy behavior is a
+          bug, not a feature worth preserving.
+      Drop config libs entirely:
+        description: >
+          Remove .playlite/config.ts#libs from the config surface so
+          config libs cannot interfere with either run or eval dispatch.
+        rationale: >
+          Rejected. D9's ergonomic for run is real and load-bearing for
+          the AI-agent audience.
+    refs:
+      - file: src/cli.ts
+        identifier: program
+        role: implements
+      - file: docs/usage.md
+        identifier: eval
+        role: defines
+
 constraints:
   - id: C1
     name: Node.js 18+ required

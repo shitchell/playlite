@@ -130,8 +130,8 @@ program
     }
     code = provided[0]!;
     options.json = options.json || options.format === 'json';
-    // Merge config libs (first) with CLI --lib flags (appended/override).
-    options.lib = [...configLibs, ...options.lib];
+    // Config libs do NOT auto-apply to eval — see D19 (#006).
+    // Eval's context (browser vs Node) is determined by explicit --lib only.
     await evalCommand(code, options);
   });
 
