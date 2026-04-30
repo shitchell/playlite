@@ -17,6 +17,7 @@ import { executeWrapper } from '../runner.js';
 export interface RunOptions {
   port: string;
   session?: string;
+  wasPortGiven?: boolean;
   tab?: string;
   lib?: string[];
 }

@@ -4,6 +4,7 @@ import { resolvePort } from '../config.js';
 export interface ScreenshotOptions {
   port: string;
   session?: string;
+  wasPortGiven?: boolean;
   tab?: string;
   full: boolean;
 }
