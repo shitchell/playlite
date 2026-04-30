@@ -219,12 +219,14 @@ program
     'classes filtered, redundant roles suppressed.'
   )
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--depth <n>', 'Maximum tree depth', '6')
   .option('--show-classes <mode>', 'Class filter aggressiveness: none|stable|all', 'stable')
   .option('--no-collapse', 'Disable empty-wrapper collapse')
   .option('--max-text <n>', 'Truncate visible text to N chars', '60')
-  .action(async (selector, options) => {
+  .action(async (selector, options, cmd) => {
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await tree(selector, options);
   });
 

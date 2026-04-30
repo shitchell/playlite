@@ -25,10 +25,12 @@
  */
 
 import { connectToBrowser, selectPage } from '../browser.js';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 
 export interface TreeOptions {
   port: string;
+  session?: string;
+  wasPortGiven?: boolean;
   tab?: string;
   depth: string;
   showClasses: 'none' | 'stable' | 'all';
@@ -37,7 +39,7 @@ export interface TreeOptions {
 }
 
 export async function tree(selector: string | undefined, options: TreeOptions): Promise<void> {
-  const port = parsePort(options.port);
+  const port = resolvePort(options);
   const depth = parseInt(options.depth, 10);
   if (isNaN(depth) || depth < 1) {
     throw new Error(`Invalid --depth: "${options.depth}"`);
