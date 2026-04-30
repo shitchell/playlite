@@ -43,6 +43,8 @@ meta:
         description: Run command behavior
       sessions:
         description: Named-session registry, lifecycle, and CLI surface
+      history:
+        description: Per-session command history capture, storage, and dump
       public-api:
         description: Surfaces (on-disk schemas, CLI output formats) committed-to once shipped
       testing:
@@ -707,6 +709,9 @@ decisions:
       - file: src/commands/observe.ts
         identifier: observe
         role: implements
+      - file: src/commands/history.ts
+        identifier: history
+        role: implements
       - file: docs/usage.md
         identifier: eval
         role: defines
@@ -885,30 +890,36 @@ decisions:
     status: active
     statement: >
       Sessions launched via `playlite launch --name <label>` register
-      metadata at `~/.playlite/sessions/<name>/meta.json`. The
-      `meta.json` schema carries `schemaVersion: 1` for future
-      forward-evolution. The `playlite ls --json` output equals
-      `SessionMeta[]` — exactly the on-disk contract — with no
-      derived/redundant fields. Anonymous (no `--name`) launches do
-      not interact with the registry.
+      metadata at `~/.playlite/sessions/<name>/meta.json`. Every
+      on-disk schema in the per-session directory carries
+      `schemaVersion: 1` for forward-evolution. This applies to
+      `meta.json` (registered identity) and `history.jsonl`
+      (per-session command log; one JSON object per line). The
+      `playlite ls --json` output equals `SessionMeta[]` — exactly
+      the on-disk meta.json contract — with no derived/redundant
+      fields. The `playlite history <name> --json` output equals
+      `HistoryEntry[]` rendered as one JSON object per line
+      (newline-delimited). Anonymous (no `--name`) launches do not
+      interact with the registry; anonymous (`--port`-only) command
+      invocations are not logged.
     rationale: >
-      The registry path, `meta.json` schema, and `ls --json` output
-      become public-API the moment a release ships this surface.
-      Pinning the contract now lets us evolve internal implementation
-      without breaking deployed consumer scripts that parse `ls --json`
-      or read `meta.json` directly. `~/.playlite/sessions/` mirrors
-      playlite's existing `.playlite/` walk-up convention (P4) rather
-      than introducing XDG conventions that would diverge from the
-      project's established prefix; XDG migration remains trivial via
-      a one-time symlink shim if a future contributor or downstream
-      packager motivates the change. `schemaVersion` is the cheapest
-      possible insurance against a forward-evolution headache.
-      Restricting `ls --json` to the on-disk shape (dropping `alive:
-      true` as tautological and `ageMs` as derivable from `createdAt`)
-      shrinks the committed surface area and keeps human-readable
-      formatting concerns out of the machine contract.
-    tags: [sessions, cli, public-api, output]
-    maps_to: [project:V2, project:V3, project:V4, project:G1, project:G2]
+      The registry path, `meta.json` schema, `history.jsonl` schema,
+      and the JSON outputs of both `ls` and `history` become public
+      API the moment a release ships them. Pinning all the on-disk
+      and JSON-output contracts under a single decision lets us
+      evolve internal implementation without breaking deployed
+      consumer scripts. `~/.playlite/sessions/` mirrors playlite's
+      existing `.playlite/` walk-up convention (P4) rather than
+      introducing XDG conventions; XDG migration remains trivial via
+      a one-time shim if motivated. `schemaVersion` is the cheapest
+      possible insurance against forward-evolution headaches; making
+      it a contract for ALL on-disk per-session schemas (not just
+      meta.json) means future schema additions follow the same
+      discipline by default. Restricting JSON outputs to the on-disk
+      shape keeps human-readable formatting concerns out of the
+      machine contract.
+    tags: [sessions, history, cli, public-api, output]
+    maps_to: [project:V2, project:V3, project:V4, project:G1, project:G2, project:G3]
     considered:
       XDG_STATE_HOME path:
         description: >
@@ -933,17 +944,18 @@ decisions:
           (live-Chromium debugging, not server-side daemons).
       Omit schemaVersion field:
         description: >
-          Ship `meta.json` without a `schemaVersion` field; rely on
-          duck-typing and best-effort migration if the schema ever
-          changes.
+          Ship `meta.json` and `history.jsonl` without a
+          `schemaVersion` field; rely on duck-typing and best-effort
+          migration if the schemas ever change.
         rationale: >
-          Rejected. Adding the field now costs ~4 lines; adding it
-          later costs deployment-wide migration code plus a window of
-          schema ambiguity. Cheap insurance.
+          Rejected. Adding the field now costs ~2 lines per schema;
+          adding it later costs deployment-wide migration code plus
+          a window of schema ambiguity. Cheap insurance applied
+          uniformly.
       Include alive/ageMs in ls --json contract:
         description: >
           Keep `alive: true` and `ageMs` (computed from `createdAt`)
-          in the JSON output as the PR currently does.
+          in the `ls --json` output as the original PR proposed.
         rationale: >
           Rejected. `alive: true` is tautological — `ls` only emits
           live sessions; dead ones are pruned before output. `ageMs`
@@ -951,6 +963,18 @@ decisions:
           Both are convenience for the human formatter; including
           them in the JSON commits us to surface that adds no
           information consumers can't compute.
+      Separate D21 for history schema versioning:
+        description: >
+          Codify `history.jsonl` schema versioning + JSON output
+          contract as a new D21 decision rather than extending D20.
+        rationale: >
+          Rejected. Same pattern, same per-session directory, same
+          forward-evolution motivation, same rejected alternatives.
+          One decision covering all per-session on-disk schemas is
+          cleaner than two parallel decisions that would diverge in
+          minor ways over time. If the registry grows additional
+          schemas (e.g., per-session config overrides, replay
+          recordings), they slot under the same D20 contract.
     refs:
       - file: src/sessions.ts
         identifier: SessionMeta
@@ -963,6 +987,15 @@ decisions:
         role: implements
       - file: src/commands/launch.ts
         identifier: launch
+        role: implements
+      - file: src/history.ts
+        identifier: HistoryEntry
+        role: defines
+      - file: src/history.ts
+        identifier: withHistory
+        role: implements
+      - file: src/commands/history.ts
+        identifier: history
         role: implements
 
 constraints:

@@ -15,6 +15,8 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { sessionDir } from './sessions.js';
 
 export interface HistoryEntry {
+  /** Schema version for the entry shape. */
+  schemaVersion: 1;
   /** ISO-8601 UTC timestamp of when the command started. */
   ts: string;
   /** Subcommand name (e.g., "navigate", "eval"). */
@@ -71,7 +73,7 @@ export function readHistory(sessionName: string): HistoryEntry[] {
   for (const line of lines) {
     if (!line) continue;
     try {
-      out.push(JSON.parse(line) as HistoryEntry);
+      out.push({ schemaVersion: 1, ...JSON.parse(line) } as HistoryEntry);
     } catch {
       // Skip malformed lines.
     }
@@ -111,6 +113,7 @@ export async function withHistory<T>(
   try {
     const result = await fn();
     appendHistory(sessionName, {
+      schemaVersion: 1,
       ts,
       cmd,
       args,
@@ -122,6 +125,7 @@ export async function withHistory<T>(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     appendHistory(sessionName, {
+      schemaVersion: 1,
       ts,
       cmd,
       args,

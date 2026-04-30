@@ -12,6 +12,7 @@ import { readSessionMeta } from '../sessions.js';
 
 export interface HistoryOptions {
   json: boolean;
+  format?: string;
   n?: string;
   clear: boolean;
 }
@@ -41,7 +42,7 @@ export async function history(name: string, options: HistoryOptions): Promise<vo
     entries = entries.slice(-n);
   }
 
-  if (options.json) {
+  if (options.json || options.format === 'json') {
     for (const e of entries) {
       console.log(JSON.stringify(e));
     }

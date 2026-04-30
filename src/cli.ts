@@ -231,7 +231,7 @@ program
   .option('--max-text <n>', 'Truncate visible text to N chars', '60')
   .action(async (selector, options, cmd) => {
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
-    await tree(selector, options);
+    await withHistory('tree', selector !== undefined ? [selector] : [], options, () => tree(selector, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -254,7 +254,7 @@ program
   .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
   .action(async (options, cmd) => {
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
-    await observe(options);
+    await withHistory('observe', [], options, () => observe(options));
   });
 
 // ----------------------------------------------------------------------------
@@ -264,6 +264,7 @@ program
   .command('history <name>')
   .description('Dump the recorded command history for a named session')
   .option('--json', 'Output raw JSONL (the on-disk format)', false)
+  .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
   .option('-n, --n <count>', 'Tail-style: print only the last N entries')
   .option('--clear', 'Truncate the history file', false)
   .action(async (name, options) => {
