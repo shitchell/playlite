@@ -14,6 +14,8 @@ import { ls } from './commands/ls.js';
 import { kill } from './commands/kill.js';
 import { tree } from './commands/tree.js';
 import { observe } from './commands/observe.js';
+import { history } from './commands/history.js';
+import { withHistory } from './history.js';
 import { loadConfig } from './config.js';
 
 const require = createRequire(import.meta.url);
@@ -47,7 +49,7 @@ program
   .action(async (options, cmd) => {
     options.json = options.json || options.format === 'json';
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
-    await tabs(options);
+    await withHistory('tabs', [], options, () => tabs(options));
   });
 
 // ----------------------------------------------------------------------------
@@ -68,7 +70,8 @@ program
     // If only positional is given, use it.
     const effectivePort: string = portArg ?? options.port;
     const wasPortGiven = !!portArg || cmd.getOptionValueSource('port') === 'cli';
-    await connect({ port: effectivePort, session: options.session, wasPortGiven });
+    const merged = { port: effectivePort, session: options.session, wasPortGiven };
+    await withHistory('connect', portArg ? [portArg] : [], merged, () => connect(merged));
   });
 
 // ----------------------------------------------------------------------------
@@ -82,7 +85,7 @@ program
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (options, cmd) => {
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
-    await url(options);
+    await withHistory('url', [], options, () => url(options));
   });
 
 // ----------------------------------------------------------------------------
@@ -97,7 +100,7 @@ program
   .option('--full', 'Full page screenshot (not just viewport)', false)
   .action(async (path, options, cmd) => {
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
-    await screenshot(path, options);
+    await withHistory('screenshot', path ? [path] : [], options, () => screenshot(path, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -111,7 +114,7 @@ program
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .action(async (targetUrl, options, cmd) => {
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
-    await navigate(targetUrl, options);
+    await withHistory('navigate', [targetUrl], options, () => navigate(targetUrl, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -148,7 +151,7 @@ program
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     // Config libs do NOT auto-apply to eval — see D19 (#006).
     // Eval's context (browser vs Node) is determined by explicit --lib only.
-    await evalCommand(code, options);
+    await withHistory('eval', [code], options, () => evalCommand(code, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -168,7 +171,7 @@ program
     // Merge config libs (first) with CLI --lib flags (appended/override).
     options.lib = [...configLibs, ...options.lib];
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
-    await run(script, options);
+    await withHistory('run', script !== undefined ? [script] : [], options, () => run(script, options));
   });
 
 // ----------------------------------------------------------------------------
@@ -252,6 +255,19 @@ program
   .action(async (options, cmd) => {
     options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await observe(options);
+  });
+
+// ----------------------------------------------------------------------------
+// history <name> — dump per-session command history
+// ----------------------------------------------------------------------------
+program
+  .command('history <name>')
+  .description('Dump the recorded command history for a named session')
+  .option('--json', 'Output raw JSONL (the on-disk format)', false)
+  .option('-n, --n <count>', 'Tail-style: print only the last N entries')
+  .option('--clear', 'Truncate the history file', false)
+  .action(async (name, options) => {
+    await history(name, options);
   });
 
 // ----------------------------------------------------------------------------
