@@ -12,6 +12,7 @@ import { executeWrapper } from '../runner.js';
 export interface EvalOptions {
   port: string;
   session?: string;
+  wasPortGiven?: boolean;
   tab?: string;
   lib?: string[];
   json: boolean;

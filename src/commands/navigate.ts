@@ -4,6 +4,7 @@ import { resolvePort } from '../config.js';
 export interface NavigateOptions {
   port: string;
   session?: string;
+  wasPortGiven?: boolean;
   tab?: string;
 }
 

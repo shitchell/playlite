@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { request } from 'node:http';
 
 export interface SessionMeta {
+  schemaVersion: 1;
   name: string;
   port: number;
   pid: number;
@@ -79,7 +80,11 @@ export function readSessionMeta(name: string): SessionMeta | null {
   const path = sessionMetaPath(name);
   if (!existsSync(path)) return null;
   try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as SessionMeta;
+    // Default missing schemaVersion to 1 so older on-disk entries (written
+    // before D20 pinned the field) still resolve cleanly. New writes always
+    // include it.
+    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as Partial<SessionMeta>;
+    return { schemaVersion: 1, ...parsed } as SessionMeta;
   } catch {
     return null;
   }

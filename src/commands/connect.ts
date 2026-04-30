@@ -4,6 +4,7 @@ import { resolvePort } from '../config.js';
 export interface ConnectOptions {
   port: string;
   session?: string;
+  wasPortGiven?: boolean;
 }
 
 export async function connect(options: ConnectOptions): Promise<void> {

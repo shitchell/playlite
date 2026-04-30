@@ -42,8 +42,9 @@ program
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--json', 'JSON output', false)
   .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
-  .action(async (options) => {
+  .action(async (options, cmd) => {
     options.json = options.json || options.format === 'json';
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await tabs(options);
   });
 
@@ -59,12 +60,13 @@ program
   )
   .option('--port <n>', 'CDP port', defaultPort)
   .option('--session <name>', 'Named session (overrides --port)')
-  .action(async (portArg, options) => {
+  .action(async (portArg, options, cmd) => {
     // The optional positional arg is a convenience alias for --port.
     // Positional wins if given; falls back to --port (or its default).
     // If only positional is given, use it.
     const effectivePort: string = portArg ?? options.port;
-    await connect({ port: effectivePort, session: options.session });
+    const wasPortGiven = !!portArg || cmd.getOptionValueSource('port') === 'cli';
+    await connect({ port: effectivePort, session: options.session, wasPortGiven });
   });
 
 // ----------------------------------------------------------------------------
@@ -76,7 +78,8 @@ program
   .option('--port <n>', 'CDP port', defaultPort)
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
-  .action(async (options) => {
+  .action(async (options, cmd) => {
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await url(options);
   });
 
@@ -90,7 +93,8 @@ program
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--full', 'Full page screenshot (not just viewport)', false)
-  .action(async (path, options) => {
+  .action(async (path, options, cmd) => {
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await screenshot(path, options);
   });
 
@@ -103,7 +107,8 @@ program
   .option('--port <n>', 'CDP port', defaultPort)
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
-  .action(async (targetUrl, options) => {
+  .action(async (targetUrl, options, cmd) => {
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await navigate(targetUrl, options);
   });
 
@@ -126,7 +131,7 @@ program
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
   .option('--json', 'Force JSON output', false)
   .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
-  .action(async (code, options) => {
+  .action(async (code, options, cmd) => {
     const provided = [code, options.expression, options.code].filter(Boolean);
     if (provided.length === 0) {
       console.error('No code provided. Use a positional, -e/--expression, or -c/--code.');
@@ -138,6 +143,7 @@ program
     }
     code = provided[0]!;
     options.json = options.json || options.format === 'json';
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     // Config libs do NOT auto-apply to eval — see D19 (#006).
     // Eval's context (browser vs Node) is determined by explicit --lib only.
     await evalCommand(code, options);
@@ -156,9 +162,10 @@ program
   .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--lib <name>', 'Load lib(s) into scope (repeatable)', collect, [])
-  .action(async (script, options) => {
+  .action(async (script, options, cmd) => {
     // Merge config libs (first) with CLI --lib flags (appended/override).
     options.lib = [...configLibs, ...options.lib];
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await run(script, options);
   });
 
@@ -184,6 +191,7 @@ program
   .command('ls')
   .description('List active named sessions')
   .option('--json', 'JSON output', false)
+  .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
   .action(async (options) => {
     await ls(options);
   });

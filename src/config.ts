@@ -94,13 +94,17 @@ export function parsePort(portStr: string): number {
  *   1. `--session` (named session lookup) — highest
  *   2. `--port` (explicit port)
  *
- * If both are given, `--session` wins and a warning is printed to
- * stderr. If `--session` is given but the named session isn't
- * registered (or its process is dead), throws an actionable error.
+ * If both are explicitly given, `--session` wins and a warning is
+ * printed to stderr. The caller passes `wasPortGiven` to indicate
+ * whether `--port` was actually typed (vs commander's default value);
+ * the warning only fires when the user explicitly provided both.
+ *
+ * If `--session` is given but the named session isn't registered (or
+ * its process is dead), throws an actionable error.
  */
-export function resolvePort(opts: { port?: string; session?: string }): number {
+export function resolvePort(opts: { port?: string; session?: string; wasPortGiven?: boolean }): number {
   if (opts.session) {
-    if (opts.port !== undefined && opts.port !== '') {
+    if (opts.wasPortGiven) {
       console.error(
         `Warning: both --session "${opts.session}" and --port "${opts.port}" given. ` +
         `Using --session.`

@@ -15,6 +15,7 @@ import {
 
 export interface LsOptions {
   json: boolean;
+  format?: string;
 }
 
 interface LiveSession extends SessionMeta {
@@ -40,8 +41,11 @@ export async function ls(options: LsOptions): Promise<void> {
     });
   }
 
-  if (options.json) {
-    console.log(JSON.stringify(live, null, 2));
+  if (options.json || options.format === 'json') {
+    // JSON contract = on-disk SessionMeta[] (D20). Drop the human-formatter-only
+    // fields (alive is tautological for ls; ageMs is derivable from createdAt).
+    const metaOnly: SessionMeta[] = live.map(({ alive: _a, ageMs: _b, ...meta }) => meta);
+    console.log(JSON.stringify(metaOnly, null, 2));
     return;
   }
 

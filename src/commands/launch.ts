@@ -24,6 +24,10 @@ export async function launch(options: LaunchOptions): Promise<void> {
 
   if (options.name) {
     assertValidSessionName(options.name);
+    // TOCTOU note: between findSession and registerSession a concurrent
+    // `launch --name <same>` could pass this check too. Acceptable — chromium
+    // port-bind serializes the actual collision, so the user-visible outcome
+    // is "one launch errors out" which is correct.
     if (findSession(options.name)) {
       throw new Error(
         `Session "${options.name}" already exists. ` +
@@ -54,6 +58,7 @@ export async function launch(options: LaunchOptions): Promise<void> {
 
   if (options.name) {
     const meta: SessionMeta = {
+      schemaVersion: 1,
       name: options.name,
       port,
       pid: process.pid,

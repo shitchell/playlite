@@ -4,6 +4,7 @@ import { resolvePort } from '../config.js';
 export interface UrlOptions {
   port: string;
   session?: string;
+  wasPortGiven?: boolean;
   tab?: string;
 }
 
