@@ -14,10 +14,12 @@
  */
 
 import { connectToBrowser, selectPage } from '../browser.js';
-import { parsePort } from '../config.js';
+import { resolvePort } from '../config.js';
 
 export interface ObserveOptions {
   port: string;
+  session?: string;
+  wasPortGiven?: boolean;
   tab?: string;
   root?: string;
   childList: boolean;
@@ -27,6 +29,7 @@ export interface ObserveOptions {
   attributeFilter?: string[];
   duration?: string;
   json: boolean;
+  format?: string;
 }
 
 /**
@@ -45,9 +48,9 @@ interface MutationRecordLite {
 }
 
 export async function observe(options: ObserveOptions): Promise<void> {
-  const port = parsePort(options.port);
-  const { browser, context } = await connectToBrowser(port);
+  const port = resolvePort(options);
 
+  // Validate --duration early so we don't pay the connect cost for a bad value.
   let durationMs: number | undefined;
   if (options.duration !== undefined) {
     durationMs = parseInt(options.duration, 10);
@@ -56,6 +59,8 @@ export async function observe(options: ObserveOptions): Promise<void> {
     }
   }
 
+  const { browser, context } = await connectToBrowser(port);
+
   try {
     const pages = context.pages();
     const page = await selectPage(pages, options.tab);
@@ -63,7 +68,7 @@ export async function observe(options: ObserveOptions): Promise<void> {
     let count = 0;
     await page.exposeFunction('__playliteMutation', (record: MutationRecordLite) => {
       count++;
-      if (options.json) {
+      if (options.json || options.format === 'json') {
         console.log(JSON.stringify(record));
       } else {
         console.log(formatRecord(record));
