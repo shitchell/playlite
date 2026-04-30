@@ -245,8 +245,8 @@ function dumpTree(args: {
     const attrs = attrPairs(el);
     const text = visibleText(el, maxText);
     const parts: string[] = [`${tag}${id}${cls}`];
-    if (attrs.length) parts.push(`[${attrs.join(', ')}]`);
     if (text) parts.push(JSON.stringify(text));
+    if (attrs.length) parts.push(`[${attrs.join(', ')}]`);
     return parts.join(' ');
   }
 
