@@ -238,6 +238,7 @@ program
   .command('observe')
   .description('Stream DOM mutations from the connected page in real time. Press Ctrl+C to stop.')
   .option('--port <n>', 'CDP port', defaultPort)
+  .option('--session <name>', 'Named session (overrides --port)')
   .option('--tab <filter>', 'Tab title substring or numeric ID')
   .option('--root <selector>', 'Observe only this subtree (default: whole document)')
   .option('--no-childList', 'Disable childList mutations')
@@ -246,8 +247,10 @@ program
   .option('--no-subtree', 'Observe only the root node, not its descendants')
   .option('--attribute-filter <name...>', 'Restrict attribute mutations to these names')
   .option('--duration <ms>', 'Auto-stop after this many milliseconds')
-  .option('--json', 'Emit raw JSON records (the on-bridge shape)', false)
-  .action(async (options) => {
+  .option('--json', 'Emit raw JSON records, one per line (newline-delimited)', false)
+  .addOption(new Option('--format <fmt>', "Output format (alias for '--json'): json").choices(['json']))
+  .action(async (options, cmd) => {
+    options.wasPortGiven = cmd.getOptionValueSource('port') === 'cli';
     await observe(options);
   });
 

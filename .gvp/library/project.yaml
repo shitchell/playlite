@@ -704,6 +704,9 @@ decisions:
       - file: src/commands/ls.ts
         identifier: ls
         role: implements
+      - file: src/commands/observe.ts
+        identifier: observe
+        role: implements
       - file: docs/usage.md
         identifier: eval
         role: defines
